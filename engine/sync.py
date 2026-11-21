@@ -147,6 +147,8 @@ def _curl_once(method, url, headers, data, timeout):
         if data is not None:
             cfg.append('data-binary = ""')
         r = subprocess.run([CURL, "-K", "-"], input="\n".join(cfg) + "\n", capture_output=True, text=True)
+        if r.returncode < 0 or r.returncode == 130:     # curl stopped by Ctrl+C: stop the whole sync
+            raise KeyboardInterrupt
         if r.returncode != 0:
             return None, (r.stderr or f"curl exit {r.returncode}").strip()
         code = int((r.stdout.strip() or "0")[-3:])
@@ -779,6 +781,9 @@ def main():
     except SyncError as e:
         status.update(error_code=e.code, error=str(e))
         log(f"ERROR {e.code}: {e}")
+    except KeyboardInterrupt:
+        status.update(error_code="STOPPED", error="Stopped by the user")
+        log("Stopped by the user (Ctrl+C); the next sync resumes where this one stopped")
     except Exception as e:  # keep a record of anything unexpected
         status.update(error_code="UNEXPECTED", error=repr(e))
         log(f"ERROR UNEXPECTED: {e!r}")
