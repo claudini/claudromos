@@ -112,6 +112,7 @@ switch ($Mode) {
 }
 
 if (-not (Test-Path (Join-Path $Src "engine\sync.py"))) { throw "Run the install from the cloned claudromos repo (it needs engine\)." }
+if (("$Src\").ToLower().StartsWith(("$Data\").ToLower())) { throw "The repo is inside the data folder $Data. Clone it somewhere else, e.g. $env:USERPROFILE\src\claudromos" }
 $py = Find-Python
 if (-not $py) { throw "Python 3 isn't installed. Install it with:  winget install Python.Python.3.12   then run this installer again." }
 Write-Host "Using Python: $py"

@@ -24,12 +24,16 @@ Sign in to Garmin Connect, open the Personal API key page (Garmin Connect Develo
 
 ### 2. Run the installer
 
+Get the code with git (below), or without git: [download the zip](https://github.com/claudini/claudromos/archive/refs/heads/main.zip) (you need access to the repo and to be signed in to GitHub) and unzip it to `src/claudromos` in your home folder.
+
+Don't put the code in `~/Claudromos` or `~/claudromos`: that is the data folder, and macOS treats the two names as the same folder.
+
 **macOS**
 
 ```
 xcode-select --install          # once, if Python isn't there yet
-git clone https://github.com/claudini/claudromos.git
-cd claudromos
+git clone https://github.com/claudini/claudromos.git ~/src/claudromos
+cd ~/src/claudromos
 bash install.sh
 ```
 
@@ -37,8 +41,8 @@ bash install.sh
 
 ```
 winget install Python.Python.3.12   # once, if Python isn't installed
-git clone https://github.com/claudini/claudromos.git
-cd claudromos
+git clone https://github.com/claudini/claudromos.git $env:USERPROFILE\src\claudromos
+cd $env:USERPROFILE\src\claudromos
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 

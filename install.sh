@@ -148,6 +148,12 @@ case "$MODE" in
 esac
 
 [ -f "$SRC/engine/sync.py" ] || { echo "Run the install from the cloned claudromos repo (it needs engine/)."; exit 1; }
+# macOS folders are case-insensitive: a repo cloned to ~/claudromos IS ~/Claudromos, the data folder.
+lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+case "$(lc "$SRC")/" in "$(lc "$DATA")"/*)
+  echo "The repo is in $SRC, which is (or is inside) the data folder $DATA."
+  echo "Clone it somewhere else, e.g.:  git clone https://github.com/claudini/claudromos.git ~/src/claudromos"
+  exit 1 ;; esac
 PY="$(find_python)" || { echo "Python 3 isn't available. Run:  xcode-select --install   then run this installer again."; exit 1; }
 echo "Using Python: $PY"
 
