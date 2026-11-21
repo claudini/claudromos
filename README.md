@@ -24,27 +24,49 @@ Sign in to Garmin Connect, open the Personal API key page (Garmin Connect Develo
 
 ### 2. Run the installer
 
-Get the code with git (below), or without git: [download the zip](https://github.com/claudini/claudromos/archive/refs/heads/main.zip) (you need access to the repo and to be signed in to GitHub) and unzip it to `src/claudromos` in your home folder.
+**Option 1: download the zip (no git needed)**
 
-Don't put the code in `~/Claudromos` or `~/claudromos`: that is the data folder, and macOS treats the two names as the same folder.
+1. Sign in to GitHub (you need access to the repo), then download [claudromos-main.zip](https://github.com/claudini/claudromos/archive/refs/heads/main.zip). On the repo page it's also under **Code → Download ZIP**.
+2. Unzip it. Safari usually does this for you, leaving `claudromos-main` in Downloads.
+3. Run the installer from that folder:
 
-**macOS**
-
-```
-xcode-select --install          # once, if Python isn't there yet
-git clone https://github.com/claudini/claudromos.git ~/src/claudromos
-cd ~/src/claudromos
-bash install.sh
-```
-
-**Windows** (PowerShell)
+macOS (Terminal):
 
 ```
-winget install Python.Python.3.12   # once, if Python isn't installed
-git clone https://github.com/claudini/claudromos.git $env:USERPROFILE\src\claudromos
-cd $env:USERPROFILE\src\claudromos
-powershell -ExecutionPolicy Bypass -File install.ps1
+xcode-select --install                          # once, if Python isn't there yet
+cd ~
+bash ~/Downloads/claudromos-main/install.sh
 ```
+
+Windows (PowerShell):
+
+```
+winget install Python.Python.3.12               # once, if Python isn't installed
+cd ~
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\Downloads\claudromos-main\install.ps1
+```
+
+The installer copies what it needs into your data folder, so you can delete the download afterwards. To update later, download the zip again (delete the old `claudromos-main` first) and run the installer again.
+
+**Option 2: clone with git**
+
+Needs git signed in to GitHub, for example with the GitHub CLI (`gh auth login`). Updating is then `git pull` and the installer again.
+
+macOS:
+
+```
+gh repo clone claudini/claudromos ~/src/claudromos
+bash ~/src/claudromos/install.sh
+```
+
+Windows:
+
+```
+gh repo clone claudini/claudromos $env:USERPROFILE\src\claudromos
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\src\claudromos\install.ps1
+```
+
+Whichever way: don't put the code in `~/Claudromos` or `~/claudromos`. That is the data folder, and macOS treats the two names as the same folder.
 
 The installer asks what to sync (runs and weight, or everything) and how far back (1 month, 1 year, 3 years, all), asks for the key, schedules the sync and runs the first one. A full history takes a while: about a second per activity.
 
@@ -73,7 +95,7 @@ Run them from the `Claudromos/.claudromos` folder, or from the repo.
 | `bash install.sh diagnose` | `... install.ps1 diagnose` | Test the key (status codes only) |
 | `bash install.sh uninstall` | `... install.ps1 uninstall` | Stop syncing and remove the key; data stays |
 
-To update, `git pull` in the repo and run the installer again. Your data, key and settings are kept.
+To update, download the zip again (or `git pull`) and run the installer again. Your data, key and settings are kept.
 
 ## Your settings
 
