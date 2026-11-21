@@ -170,7 +170,7 @@ if [ ! -x "$ENG/venv/bin/python" ]; then
   echo "Setting up the tools environment (one-off)..."
   "$PY" -m venv "$ENG/venv"
 fi
-"$ENG/venv/bin/python" -m pip install -q --upgrade fitdecode || echo "WARNING: could not install fitdecode; dashboards won't build until it is installed."
+"$ENG/venv/bin/python" -m pip install -q --disable-pip-version-check --upgrade fitdecode || echo "WARNING: could not install fitdecode; dashboards won't build until it is installed."
 
 [ -f "$CONF" ] || ask_config
 grep -q tools_python "$CONF" || write_conf "$(conf_get scope all)" "$(conf_get history all)"

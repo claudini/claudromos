@@ -125,7 +125,7 @@ Copy-Item "$Src\install.ps1" $Eng -Force
 Write-Host "Engine installed in $Eng"
 
 if (-not (Test-Path $VenvPy)) { Write-Host "Setting up the Python environment (one-off)..."; & $py -m venv (Join-Path $Eng "venv") }
-& $VenvPy -m pip install -q --upgrade fitdecode
+& $VenvPy -m pip install -q --disable-pip-version-check --upgrade fitdecode
 if ($LASTEXITCODE -ne 0) { Write-Warning "Could not install fitdecode; dashboards won't build until it is installed." }
 
 if (-not (Test-Path $Conf)) { Ask-Conf } else { $c = Read-Conf; Write-Conf $c.scope $c.history }
