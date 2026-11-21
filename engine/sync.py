@@ -716,12 +716,13 @@ def rebuild(cfg, reason):
 
 def data_fingerprint():
     """What the dashboards depend on besides new activities: weight, HR settings log, config."""
+    import hashlib    # content, not modification time: the sync rewrites weight.csv on every run
     parts = []
     for rel in ("weight/weight.csv", "settings_changes.csv", "config/areas.json", "config/plan.json",
-                "config/overrides.json", "config/race_words.json"):
+                "config/overrides.json", "config/race_words.json", "athlete.md"):
         try:
-            st = os.stat(os.path.join(ROOT, rel))
-            parts.append(f"{rel}:{st.st_size}:{int(st.st_mtime)}")
+            with open(os.path.join(ROOT, rel), "rb") as f:
+                parts.append(f"{rel}:{hashlib.md5(f.read()).hexdigest()}")
         except FileNotFoundError:
             pass
     return "|".join(parts)
