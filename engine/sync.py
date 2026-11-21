@@ -770,6 +770,7 @@ def main():
         fp = data_fingerprint()
         if n_new or n_det or fp != state.get("built_fingerprint") or not state.get("built_ok"):
             reason = f"{n_new} new activities" if n_new else "changed data or config"
+            save_json(os.path.join(ROOT, "status.json"), dict(status, last_success=status["last_run"]))  # the page shows it
             status["rebuild"] = rebuild(cfg, reason)
             state["built_ok"] = status["rebuild"] in ("ok", "no tools installed")
             state["built_fingerprint"] = data_fingerprint()
