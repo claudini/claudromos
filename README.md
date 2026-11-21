@@ -28,7 +28,7 @@ Sign in to Garmin Connect, open the Personal API key page (Garmin Connect Develo
 
 ```
 xcode-select --install          # once, if Python isn't there yet
-git clone https://github.com/<owner>/claudromos.git
+git clone https://github.com/claudini/claudromos.git
 cd claudromos
 bash install.sh
 ```
@@ -37,7 +37,7 @@ bash install.sh
 
 ```
 winget install Python.Python.3.12   # once, if Python isn't installed
-git clone https://github.com/<owner>/claudromos.git
+git clone https://github.com/claudini/claudromos.git
 cd claudromos
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
