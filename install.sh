@@ -163,6 +163,14 @@ cp "$SRC/engine/sync.py" "$ENG/"
 cp "$SRC"/engine/tools/*.py "$ENG/tools/"
 cp "$SRC/engine/dashboards/claudromos.template.html" "$ENG/dashboards/"
 cp "$SRC/install.sh" "$ENG/install.sh"
+rm -rf "$ENG/coach"; mkdir -p "$ENG/coach"; cp -R "$SRC/coach/claudromos-coach" "$ENG/coach/"
+place_generated() {  # copy unless the runner has made the file their own (removed the generated marker)
+  if [ ! -f "$2" ] || head -1 "$2" | grep -q "claudromos:generated"; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; fi
+}
+# The same coach for other assistants: GitHub Copilot (AGENTS.md, .github/copilot-instructions.md), Gemini CLI.
+place_generated "$SRC/coach/AGENTS.md" "$DATA/AGENTS.md"
+place_generated "$SRC/coach/AGENTS.md" "$DATA/.github/copilot-instructions.md"
+[ -f "$DATA/.gemini/settings.json" ] || { mkdir -p "$DATA/.gemini"; printf '{\n  "context": { "fileName": ["AGENTS.md", "GEMINI.md"] }\n}\n' > "$DATA/.gemini/settings.json"; }
 echo "$PY" > "$ENG/python_path"
 echo "Engine installed in $ENG"
 

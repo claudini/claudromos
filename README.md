@@ -54,6 +54,8 @@ The installer asks what to sync (runs and weight, or everything) and how far bac
 2. Add the skill: zip `coach/claudromos-coach` and upload it in Claude's settings (Capabilities, Skills).
 3. Tell Claude "set me up". It reads your data, fills in what it can (watch, weekly volume, paces, races, HR settings, the areas you run in) and asks only for goals, plan and preferences. The result is `Claudromos/athlete.md`, yours to edit.
 
+**Using GitHub Copilot or Gemini instead?** The installer also puts the coach in the data folder for them: `AGENTS.md` and `.github/copilot-instructions.md` (read by Copilot in VS Code) and `.gemini/settings.json` (tells Gemini CLI to read `AGENTS.md`). Open `Claudromos` as the workspace in VS Code with Copilot agent mode, or run `gemini` inside it, and say "set me up". Scheduled reviews and the phone dashboard are Claude features; with the others, open the local dashboard.
+
 Optional: ask Claude to schedule a weekly review and an evening run check (prompts in `coach/claudromos-coach/references/weekly-review.md`), or to publish your dashboard as a private Claude artifact so you can open it on your phone.
 
 ## Everyday commands

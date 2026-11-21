@@ -122,6 +122,21 @@ Copy-Item "$Src\engine\sync.py" $Eng -Force
 Copy-Item "$Src\engine\tools\*.py" "$Eng\tools" -Force
 Copy-Item "$Src\engine\dashboards\claudromos.template.html" "$Eng\dashboards" -Force
 Copy-Item "$Src\install.ps1" $Eng -Force
+if (Test-Path "$Eng\coach") { Remove-Item "$Eng\coach" -Recurse -Force }
+New-Item -ItemType Directory -Force -Path "$Eng\coach" | Out-Null
+Copy-Item "$Src\coach\claudromos-coach" "$Eng\coach" -Recurse -Force
+function Place-Generated([string]$From, [string]$To) {
+    # copy unless the runner has made the file their own (removed the generated marker)
+    if (-not (Test-Path $To) -or ((Get-Content $To -TotalCount 1) -like "*claudromos:generated*")) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $To) | Out-Null; Copy-Item $From $To -Force }
+}
+# The same coach for other assistants: GitHub Copilot (AGENTS.md, .github\copilot-instructions.md), Gemini CLI.
+Place-Generated "$Src\coach\AGENTS.md" "$Data\AGENTS.md"
+Place-Generated "$Src\coach\AGENTS.md" "$Data\.github\copilot-instructions.md"
+if (-not (Test-Path "$Data\.gemini\settings.json")) {
+    New-Item -ItemType Directory -Force -Path "$Data\.gemini" | Out-Null
+    [IO.File]::WriteAllText("$Data\.gemini\settings.json", "{`n  `"context`": { `"fileName`": [`"AGENTS.md`", `"GEMINI.md`"] }`n}`n")
+}
 Write-Host "Engine installed in $Eng"
 
 if (-not (Test-Path $VenvPy)) { Write-Host "Setting up the Python environment (one-off)..."; & $py -m venv (Join-Path $Eng "venv") }
