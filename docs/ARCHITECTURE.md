@@ -29,7 +29,7 @@ build.py → history.py + review.py → CSVs in .claudromos/out/
 claudromos/
 ├── README.md                  install (zip first, git second), commands, settings
 ├── TODO.md
-├── docs/                      ARCHITECTURE.md (this file), ONBOARDING.md
+├── docs/                      ARCHITECTURE.md (this file), DASHBOARD.md, ONBOARDING.md
 ├── install.sh                 macOS: migrate from ~/Garmin, venv, Keychain key, launchd schedule
 ├── install.ps1                Windows: venv, DPAPI-encrypted key, Task Scheduler (every 15 min + at logon)
 ├── engine/

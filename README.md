@@ -141,5 +141,6 @@ Run `bash install.sh` from the repo. It offers to move `~/Garmin` to `~/Claudrom
 ## More docs
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the parts fit together, repo and data-folder layout, design choices
+- [docs/DASHBOARD.md](docs/DASHBOARD.md): every section of the dashboard, what it shows and how it's calculated
 - [docs/ONBOARDING.md](docs/ONBOARDING.md): what a new runner goes through, and where it's still rough
 - Each data folder also gets a short `README.md` describing its files and commands
