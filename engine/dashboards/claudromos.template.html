@@ -67,7 +67,7 @@ svg text { fill:var(--muted); font-size:11px; }
   <section><h2>Volume by month</h2><p class="note">Road, trail and race km.</p><div class="legend" id="h-month-leg"></div><div id="h-months"></div></section>
   <section><h2>Elevation by year</h2><div id="h-elev"></div></section>
   <section><h2>Average pace by month</h2><p class="note">Median of non-race runs of 3 km or more (at least 2 in the month). Trail is grade-adjusted. Faster is higher.</p><div class="legend" id="h-pace-leg"></div><div id="h-pace"></div></section>
-  <section><h2>Usual runs: pace by area, quarter by quarter</h2><p class="note">Median grade-adjusted pace of non-race runs of 3 km or more, per quarter with at least 2 runs. Click an area to show or hide it.</p><div class="legend" id="h-area-leg"></div><div id="h-area"></div><div class="scroll" id="h-area-status"></div></section>
+  <section><h2>Usual runs: pace and effort by area, quarter by quarter</h2><p class="note">Non-race runs of 3 km or more, per quarter with at least 2 runs. Pace is grade-adjusted and weighted by distance (total time over total distance); HR is weighted by time; efficiency is metres covered per heartbeat, higher is fitter. Status compares the last 6 months with the 12 months before: pace changes count from 5 s/km, HR changes from 2 bpm. Click an area to show or hide it.</p><div class="legend" id="h-area-metric"></div><div class="legend" id="h-area-leg"></div><div id="h-area"></div><div class="scroll" id="h-area-status"></div></section>
   <section><h2>VO2 max</h2><p class="note" id="h-vo2-note">Watch estimate. Dashed lines mark heart-rate setting changes, which shift the estimate.</p><div id="h-vo2"></div></section>
   <section><h2>Weight</h2><div id="h-weight"></div></section>
   <section><h2>Correlation does not imply causation</h2><p class="note">Any two monthly metrics on one chart. Lines moving together don't mean one causes the other.
@@ -364,26 +364,51 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   const drawPace = () => xyChart($('#h-pace'), { series: ps, invert: true, yfmt: pace, xint: true });
   legend($('#h-pace-leg'), ps, drawPace); drawPace();
 
-  // areas
+  // areas: distance-weighted grade-adjusted pace, HR and efficiency per quarter
   const AREAS = (meta.areas && meta.areas.length ? meta.areas : [...new Set(RUNS.map((r) => r.area))].filter((a) => a && !/^(Away|Treadmill)/.test(a) && !/other$/.test(a)));
   const q = (d) => `${d.slice(0, 4)}-Q${Math.floor((+d.slice(5, 7) - 1) / 3) + 1}`;
   const qx = (k) => +k.slice(0, 4) + (+k.slice(6) - 1) / 4 + 0.125;
-  const as = AREAS.map((a, i) => { const g = group(RUNS.filter((r) => r.area === a && paceOK(r)), (r) => q(r.date));
-    return { name: a, color: COLORS[i % COLORS.length], dots: true, breakGap: 0.6, pts: [...g].filter(([, rs]) => rs.length >= 2).sort().map(([k, rs]) => ({ x: qx(k), y: med(rs.map(gapOf)), tip: `${esc(a)}, ${k}: ${pace(med(rs.map(gapOf)))}/km over ${rs.length} runs` })) }; });
-  const drawAreas = () => xyChart($('#h-area'), { series: as, invert: true, yfmt: pace, xint: true });
+  // weighted by distance: total time over total distance (grade-adjusted); HR weighted by time; efficiency = metres per heartbeat
+  const agg = (rs) => { const km = rs.reduce((a, r) => a + num(r.km), 0), sec = rs.reduce((a, r) => a + gapOf(r) * num(r.km), 0);
+    const h = rs.filter((r) => num(r.avg_hr)), hsec = h.reduce((a, r) => a + gapOf(r) * num(r.km), 0);
+    const hr = hsec ? h.reduce((a, r) => a + num(r.avg_hr) * gapOf(r) * num(r.km), 0) / hsec : null;
+    const hkm = h.reduce((a, r) => a + num(r.km), 0), beats = h.reduce((a, r) => a + num(r.avg_hr) * gapOf(r) * num(r.km) / 60, 0);
+    return { n: rs.length, km, gap: km ? sec / km : null, hr, eff: beats ? hkm * 1000 / beats : null }; };
+  const AM = { gap: { name: 'Pace (GAP)', f: (s) => s.gap, fmt: pace, inv: true, unit: '/km' }, hr: { name: 'Average HR', f: (s) => s.hr, fmt: (v) => fmt(v), unit: ' bpm' },
+    eff: { name: 'Efficiency', f: (s) => s.eff, fmt: (v) => fmt(v, 2), unit: ' m per beat' } };
+  const aq = AREAS.map((a) => [a, [...group(RUNS.filter((r) => r.area === a && paceOK(r)), (r) => q(r.date))].filter(([, rs]) => rs.length >= 2).sort().map(([k, rs]) => [k, agg(rs)])]);
+  const as = aq.map(([a, qs], i) => ({ name: a, color: COLORS[i % COLORS.length], dots: true, breakGap: 0.6, qs, pts: [] }));
+  let areaMetric = 'gap';
+  const drawAreas = () => { const M = AM[areaMetric];
+    for (const s of as) s.pts = s.qs.map(([k, v]) => ({ x: qx(k), y: M.f(v), tip: `${esc(s.name)}, ${k}: ${pace(v.gap)}/km GAP, ${v.hr ? fmt(v.hr) + ' bpm' : 'no HR'}, ${v.eff ? fmt(v.eff, 2) + ' m/beat' : ''} · ${v.n} runs, ${fmt(v.km)} km` })).filter((p) => p.y !== null);
+    xyChart($('#h-area'), { series: as, invert: !!M.inv, yfmt: M.fmt, xint: true }); };
+  $('#h-area-metric').innerHTML = Object.entries(AM).map(([k, m]) => `<label><input type="radio" name="ham" value="${k}" ${k === 'gap' ? 'checked' : ''}> ${m.name}</label>`).join(' ');
+  $('#h-area-metric').onchange = (e) => { areaMetric = e.target.value; drawAreas(); };
   legend($('#h-area-leg'), as, drawAreas); drawAreas();
   const lastDate = RUNS.length ? RUNS[RUNS.length - 1].date : null, ago = (d) => (new Date(lastDate) - new Date(d)) / 864e5;
+  const sgn = (v, d = 0, u = '') => v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : '±'}${fmt(Math.abs(v), d)}${u}`;
   const status = AREAS.map((a) => { const rs = RUNS.filter((r) => r.area === a); if (!rs.length) return null; const ok = rs.filter(paceOK);
-    const rec = ok.filter((r) => ago(r.date) <= 182), bef = ok.filter((r) => ago(r.date) > 182 && ago(r.date) <= 547);
-    const rg = rec.length >= 3 ? med(rec.map(gapOf)) : null, bg = bef.length >= 3 ? med(bef.map(gapOf)) : null, ch = rg !== null && bg !== null ? Math.round(rg - bg) : null;
+    const recR = ok.filter((r) => ago(r.date) <= 182), befR = ok.filter((r) => ago(r.date) > 182 && ago(r.date) <= 547);
+    const rec = recR.length >= 3 ? agg(recR) : null, bef = befR.length >= 3 ? agg(befR) : null;
+    const dp = rec && bef ? Math.round(rec.gap - bef.gap) : null, dh = rec && bef && rec.hr && bef.hr ? rec.hr - bef.hr : null;
+    const de = rec && bef && rec.eff && bef.eff ? (rec.eff / bef.eff - 1) * 100 : null;
     const lastRun = rs[rs.length - 1].date; let st, cls = '';
-    if (rg === null) st = ago(lastRun) > 182 ? `No runs here since ${lastRun.slice(0, 7)}` : 'Too few recent runs';
-    else if (bg === null) st = 'New: no earlier year to compare';
-    else if (ch <= -5) { st = 'Getting faster'; cls = 'status-good'; } else if (ch >= 5) { st = 'Getting slower'; cls = 'status-bad'; } else st = 'Maintaining';
-    return { area: a, runs: rs.length, years: `${rs[0].year}–${rs[rs.length - 1].year}`, km: med(rs.map((r) => num(r.km))), rg, bg, ch, st, cls }; }).filter(Boolean);
-  table($('#h-area-status'), [{ h: 'Area', k: 'area' }, { h: 'Runs', n: 1, f: (r) => fmt(r.runs) }, { h: 'Years', k: 'years' }, { h: 'Typical km', n: 1, f: (r) => fmt(r.km, 1) },
-    { h: 'GAP, last 6 months', n: 1, f: (r) => pace(r.rg) }, { h: 'GAP, 12 months before', n: 1, f: (r) => pace(r.bg) }, { h: 'Change', n: 1, f: (r) => r.ch === null ? '—' : `${r.ch > 0 ? '+' : ''}${r.ch} s/km` },
-    { h: 'Status', f: (r) => `<span class="${r.cls}">${esc(r.st)}</span>` }], status);
+    if (!rec) st = ago(lastRun) > 182 ? `No runs here since ${lastRun.slice(0, 7)}` : 'Too few recent runs';
+    else if (!bef) st = 'New: no earlier year to compare';
+    else { const faster = dp <= -5, slower = dp >= 5, harder = dh !== null && dh > 2, easier = dh !== null && dh < -2;
+      if (faster && !harder) { st = easier ? 'Faster, and easier effort' : 'Faster at the same effort'; cls = 'status-good'; }
+      else if (faster && harder) st = 'Faster, but working harder';
+      else if (slower && !easier) { st = harder ? 'Slower and working harder' : 'Getting slower'; cls = 'status-bad'; }
+      else if (slower && easier) st = 'Slower, but easier effort';
+      else if (harder) { st = 'Same pace, working harder'; cls = 'status-bad'; }
+      else if (easier) { st = 'Same pace, easier effort'; cls = 'status-good'; }
+      else st = 'Maintaining'; }
+    return { area: a, runs: rs.length, years: `${rs[0].year}–${rs[rs.length - 1].year}`, km: med(rs.map((r) => num(r.km))), rec, bef, dp, dh, de, st, cls }; }).filter(Boolean);
+  table($('#h-area-status'), [{ h: 'Area', k: 'area' }, { h: 'Runs', n: 1, f: (r) => fmt(r.runs) },
+    { h: 'GAP now', n: 1, f: (r) => r.rec ? pace(r.rec.gap) : '—' }, { h: 'Before', n: 1, f: (r) => r.bef ? pace(r.bef.gap) : '—' }, { h: 'Pace', n: 1, f: (r) => sgn(r.dp, 0, ' s/km') },
+    { h: 'HR now', n: 1, f: (r) => r.rec && r.rec.hr ? fmt(r.rec.hr) : '—' }, { h: 'HR', n: 1, f: (r) => sgn(r.dh, 0, ' bpm') }, { h: 'Efficiency', n: 1, f: (r) => sgn(r.de, 1, '%') },
+    { h: 'Status', f: (r) => `<span class="${r.cls}" style="white-space:normal">${esc(r.st)}</span>` }], status);
+  $('#h-area-status').insertAdjacentHTML('beforeend', '<p class="note">Now: last 6 months. Before: the 12 months before that.</p>');
 
   // VO2 max
   const markers = CHANGES.map((c) => ({ x: fy(String(c.date)), tip: `${c.date}: ${esc(c.setting)} ${esc(c.from)} → ${esc(c.to)}${c.note ? `<br>${esc(c.note)}` : ''}` }));
