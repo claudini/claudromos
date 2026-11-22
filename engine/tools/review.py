@@ -49,6 +49,13 @@ def load(root):
         a["is_run"] = a.get("type") in RUN_TYPES
         acts.append(a)
     acts.sort(key=lambda a: a.get("start_local") or a["date"])
+    # display names from the history tool (default names replaced by the area), when it has run
+    names_p = os.path.join(root, ".claudromos", "out", "runs_all.csv")
+    if os.path.exists(names_p):
+        with open(names_p, encoding="utf-8", newline="") as f:
+            names = {r["id"]: r["name"] for r in csv.DictReader(f) if r.get("name")}
+        for a in acts:
+            a["name"] = names.get(a["id"], a.get("name"))
     weight = []
     wp = os.path.join(root, "weight", "weight.csv")
     if os.path.exists(wp):

@@ -105,7 +105,7 @@ All optional, in `Claudromos/config/`:
 | --- | --- |
 | `areas.json` | The areas you run in. Detected from your GPS tracks on the first build, named "Area 1 near ..." until you (or Claude) rename them |
 | `plan.json` | Your training plan's phases and weekly targets, for the Training tab and weekly reviews |
-| `overrides.json` | `exclude`: activity ids to ignore (an old import); `extra_races`: races your watch never tagged |
+| `overrides.json` | `exclude`: activity ids to ignore (an old import); `extra_races`: races your watch never tagged; `rename_default_names`: `false` keeps Garmin's default names ("Bucharest Running") instead of showing the area the run was in |
 | `race_words.json` | Words that mark a likely race in a run's name |
 
 `athlete.md` (in the data folder) is your profile for the coach. None of these files belong in the repo.

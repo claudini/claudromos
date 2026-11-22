@@ -320,6 +320,17 @@ def main(root, out, areas_path=None):
             else:
                 x["area"] = "Away"
 
+    # --- default names ("Bucharest Running", "Bucharest Trail Running") become the area they were run in,
+    # so the dashboard reads "Herăstrău" instead of the city. Garmin's name stays in garmin_name.
+    # config/overrides.json: "rename_default_names": false turns it off; "default_name_pattern" changes the match.
+    default_name = re.compile(cfg.get("default_name_pattern") or r"^\S+(?: \S+)? (?:Trail )?Running$", re.I)
+    unnamed_areas = {"Away", "Treadmill / no GPS", HOME[0] if HOME else None}
+    for x in runs:
+        x["garmin_name"] = x["name"]
+        if (cfg.get("rename_default_names", True) and x["race"] != "yes" and x["area"] not in unnamed_areas
+                and default_name.match(x["name"] or "")):
+            x["name"] = x["area"] + (" (trail)" if x["surface"] == "trail" else "")
+
     # --- courses: group races by start (within 3 km) and distance (within 12%); then add every run that
     # covers the same route (both tracks overlap at least 80%).
     races = [x for x in runs if x["race"] == "yes" and x["_start"] and x["_track"]]
@@ -366,7 +377,7 @@ def main(root, out, areas_path=None):
             w.writeheader()
             w.writerows(rows)
 
-    run_cols = ["id", "date", "year", "month", "name", "type", "surface", "race", "km", "minutes", "pace_s_per_km",
+    run_cols = ["id", "date", "year", "month", "name", "garmin_name", "type", "surface", "race", "km", "minutes", "pace_s_per_km",
                 "gap_s_per_km", "moving_min", "gain_m", "gain_per_km", "avg_hr", "area", "place", "course_id"]
     write("runs_all.csv", runs, run_cols)
     write("courses.csv", courses, ["course_id", "course", "km", "gain_m", "attempts", "races", "first", "last"])
