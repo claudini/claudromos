@@ -150,12 +150,12 @@ if (-not (Test-Path $KeyFile)) { Store-Key } else { Write-Host "A key is already
 # (--if-due): it syncs when 3 hours have passed or when .claudromos\trigger was touched.
 New-Item -ItemType File -Force -Path (Join-Path $Eng "trigger") | Out-Null
 $action = New-ScheduledTaskAction -Execute $VenvPyw -Argument "-X utf8 `"$Eng\sync.py`" --root `"$Data`" --if-due" -WorkingDirectory $Eng
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 15)
+$trigger = @((New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 15)), (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME))
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 3)
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
     -Description "Claudromos: Garmin sync and dashboard rebuild" -Force | Out-Null
-Write-Host "Scheduled: checks every 15 minutes, syncs every 3 hours or when $Eng\trigger is touched."
+Write-Host "Scheduled: checks at logon and every 15 minutes; syncs when 3 hours have passed or $Eng\trigger was touched."
 
 Run-Sync
 Write-Host "Done. Data: $Data   Dashboard: $Data\dashboards\claudromos.html"

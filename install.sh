@@ -10,6 +10,7 @@
 #   bash install.sh scope runs|all        runs = activities + weight; all = everything the API offers
 #   bash install.sh history 1m|1y|3y|all  how far back to go (extending fetches only the older part)
 #   bash install.sh diagnose        test the token request (prints status codes only)
+#   bash install.sh schedule        rewrite the sync schedule (run from the installed copy too)
 #   bash install.sh uninstall       stop syncing, remove the key (keeps your data)
 #
 # Data folder: $CLAUDROMOS_DIR, default ~/Claudromos. An existing ~/Garmin install is moved there.
@@ -86,6 +87,33 @@ ask_config() {
   write_conf "$s" "$h"
 }
 
+write_schedule() {  # launchd: every 3 hours, at login/startup, and whenever the trigger file is touched
+  local PY; PY="$(cat "$ENG/python_path")"
+  mkdir -p "$HOME/Library/LaunchAgents" "$DATA/logs"
+  touch "$ENG/trigger"
+  cat > "$PLIST" <<PLEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>$LABEL</string>
+    <key>ProgramArguments</key>
+    <array><string>$PY</string><string>$ENG/sync.py</string></array>
+    <key>EnvironmentVariables</key>
+    <dict><key>CLAUDROMOS_DIR</key><string>$DATA</string></dict>
+    <key>StartInterval</key><integer>10800</integer>
+    <key>WatchPaths</key>
+    <array><string>$ENG/trigger</string></array>
+    <key>RunAtLoad</key><true/>
+    <key>StandardOutPath</key><string>$DATA/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key><string>$DATA/logs/launchd.err.log</string>
+</dict>
+</plist>
+PLEOF
+  launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$PLIST"
+}
+
 sync_py() { "$(cat "$ENG/python_path")" "$ENG/sync.py" "$@"; }
 
 run_sync() {
@@ -137,6 +165,7 @@ case "$MODE" in
     case "${2:-}" in 1m|1y|3y|all) write_conf "$(conf_get scope all)" "$2"; run_sync; exit 0 ;;
       *) echo "Usage: install.sh history 1m|1y|3y|all"; exit 1 ;; esac ;;
   diagnose)   CLAUDROMOS_DIR="$DATA" sync_py diagnose; exit 0 ;;
+  schedule)   write_schedule; echo "Schedule updated: every 3 hours, at login and on the trigger file."; exit 0 ;;
   uninstall)
     launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
     rm -f "$PLIST"
@@ -189,30 +218,8 @@ else
   echo "A key is already saved in the Keychain (use 'update-key' to replace it)."
 fi
 
-touch "$ENG/trigger"
-cat > "$PLIST" <<PLEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>$LABEL</string>
-  <key>ProgramArguments</key>
-  <array><string>$PY</string><string>$ENG/sync.py</string></array>
-  <key>EnvironmentVariables</key>
-  <dict><key>CLAUDROMOS_DIR</key><string>$DATA</string></dict>
-  <key>StartInterval</key><integer>10800</integer>
-  <key>WatchPaths</key>
-  <array><string>$ENG/trigger</string></array>
-  <key>RunAtLoad</key><false/>
-  <key>StandardOutPath</key><string>$DATA/logs/launchd.out.log</string>
-  <key>StandardErrorPath</key><string>$DATA/logs/launchd.err.log</string>
-</dict>
-</plist>
-PLEOF
-launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "Scheduled: sync every 3 hours (catches up after the Mac wakes), and whenever $ENG/trigger is touched."
-
 run_sync
+write_schedule   # after the first sync: loading the schedule starts a (quick) sync of its own
+echo "Scheduled: sync at login, every 3 hours (catching up after sleep), and whenever $ENG/trigger is touched."
 echo "Done. Data: $DATA   Dashboard: $DATA/dashboards/claudromos.html"
 echo "Next: in Claude, add the claudromos-coach skill and say \"set me up\"."
