@@ -42,6 +42,13 @@ def read_csv(path):
     return rows
 
 
+def read_text(path):
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8-sig") as f:
+        return f.read()
+
+
 def athlete_name(root):
     p = os.path.join(root, "athlete.md")
     if os.path.exists(p):
@@ -69,6 +76,7 @@ def build_dashboard(root, out):
                     "has_plan": os.path.exists(os.path.join(root, "config", "plan.json")),
                     "plan": history.jload(os.path.join(root, "config", "plan.json")),
                     "zones": history.zone_floors(root),
+                    "plan_md": read_text(os.path.join(root, "config", "plan.md")),
                     "areas": [a["name"] for a in (history.jload(os.path.join(root, "config", "areas.json"), {}) or {}).get("areas", [])]}
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     page = page.replace("/*__CLAUDROMOS_DATA__*/null", blob, 1)

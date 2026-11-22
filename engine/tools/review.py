@@ -104,11 +104,14 @@ def plan_for(week_start):
             km = None
             if k0 is not None:
                 km = k0 if a == b else k0 + (k1 - k0) * (w - a) / (b - a)
-            return {"week": w, "phase": f"weeks {a}–{b}", "focus": ph.get("focus", ""),
+            lw = {x["week"]: x for x in PLAN.get("lighter_weeks", [])}
+            if w in lw:
+                km = lw[w].get("km", km)
+            return {"week": w, "phase": f"weeks {a}–{b}", "focus": ph.get("focus", "") + (f" (lighter week: {lw[w]['note']})" if w in lw and lw[w].get("note") else ""),
                     "target_km": round(km, 1) if km is not None else None,
                     "target_km_range": [k0, k1] if k0 is not None else None,
                     "target_hours": ph.get("hours"),
-                    "lighter_week_expected": bool(every) and w % every == 0 and w <= until}
+                    "lighter_week_expected": (w in lw) if PLAN.get("lighter_weeks") else (bool(every) and w % every == 0 and w <= until)}
     return {"week": w, "focus": "After the plan"}
 
 

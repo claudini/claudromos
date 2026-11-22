@@ -1,6 +1,6 @@
 # Dashboard
 
-`~/Claudromos/dashboards/claudromos.html` is one offline page with two tabs, **Training** and **History**. Double-click it to open; reload after a sync to see new data.
+`~/Claudromos/dashboards/claudromos.html` is one offline page with three tabs: **Training**, **History** and **Plan**. Double-click it to open; reload after a sync to see new data.
 
 ## How it's built
 
@@ -140,11 +140,22 @@ Pick a race course to see every attempt: races and training runs on the same rou
 
 Every course with its distance, gain, attempts, races and first and last dates. Races share a course when they start within 3 km of each other, differ by at most 12% in distance and overlap in route.
 
+## Plan tab
+
+### Week by week
+
+Every plan week from `config/plan.json`: dates, the phase's focus (with lighter-week notes and race days), the target (km, hours, climbing), what you did, a status (on target within −20%/+15%, over, under, in progress) and the number of body notes. The current week is highlighted.
+
+### The plan document
+
+`config/plan.md` rendered as a page: headings, lists, tables, bold and links. If the plan lives elsewhere (a Claude Project doc, say), the coach keeps this copy and `plan.json` in step when it changes.
+
 ## Settings that change the dashboard
 
 | File | Affects |
 | --- | --- |
-| `config/plan.json` | Week cards, targets, lighter weeks, race countdowns and markers, flags |
+| `config/plan.json` | Week cards, targets, lighter weeks (`lighter_weeks` list or `lighter_week_every`), race countdowns and markers, flags, the Plan tab's weeks |
+| `config/plan.md` | The Plan tab's document |
 | `config/areas.json` | Area names, usual runs, run names |
 | `config/overrides.json` | Excluded activities, extra races, races-only courses, default-name renaming |
 | `config/race_words.json` | Which run names count as likely races |

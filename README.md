@@ -12,6 +12,7 @@ Claudromos syncs your Garmin data through the Garmin Connect Personal API to a f
 - **Dashboard** at `Claudromos/dashboards/claudromos.html`: double-click to open, works offline.
   - Training: last and current week, flags, weekly volume against your plan, weight, recent runs.
   - History: totals, volume by year and month (road, trail, races), elevation, pace by month (trail grade-adjusted), pace in the areas you usually run, VO2 max with HR setting changes, weight, a "correlation is not causation" chart for any two monthly metrics (pace, VO2 max, HR, cadence, weight), race progress.
+- **Plan** tab: your plan week by week against what you did, and the plan document itself (`config/plan.md`).
 - **Coach**: the `claudromos-coach` skill for Claude reads your data and your own `athlete.md` profile.
 
 Your data stays on your computer. Nothing is uploaded unless you ask Claude to.

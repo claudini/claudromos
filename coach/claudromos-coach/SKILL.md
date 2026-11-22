@@ -14,7 +14,7 @@ Everything specific to one runner lives in **`athlete.md`** at the root of their
 1. Find the data folder: the folder connected in the Claude desktop app that holds `athlete.md` (default `~/Claudromos`; installs from before the rename use `~/Garmin`). List the connected folders with the device tools if unsure.
 2. Read `athlete.md` in full. It overrides the defaults below: units, language, tone, HR settings, plan rules.
 3. If there is no `athlete.md`, follow `references/onboarding.md` to create one before any analysis.
-4. If the athlete's plan lives elsewhere (a Claude Project doc, a `plan.json`), `athlete.md` says where. Read it before any plan question; if `plan.json` and the plan doc disagree, trust the doc and say so.
+4. If the athlete's plan lives elsewhere (a Claude Project doc, a PDF), `athlete.md` says where. Read it before any plan question; if `config/plan.json` and the plan doc disagree, trust the doc and say so. Whenever the plan changes, update both copies in the data folder: `config/plan.md` (the plan as Markdown, shown on the dashboard's Plan tab) and `config/plan.json` (start, phases with targets, `lighter_weeks`, `races`).
 
 ## Defaults (when athlete.md says nothing)
 

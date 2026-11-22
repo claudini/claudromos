@@ -42,14 +42,21 @@ svg text { fill:var(--muted); font-size:11px; }
 .grid line { stroke:var(--line); }
 .tip { position:fixed; pointer-events:none; background:var(--fg); color:var(--bg); font-size:12px; padding:5px 8px; border-radius:6px; display:none; z-index:9; max-width:280px; }
 .flag { margin:4px 0; } .empty { color:var(--muted); font-style:italic; }
-.status-good { color:var(--good); } .status-bad { color:var(--bad); }
+.status-good { color:var(--good); }
+tr.now td { background:rgba(47,111,208,.10); font-weight:600; }
+td.wrap { white-space:normal; min-width:220px; }
+.md h1 { font-size:20px; margin:4px 0 8px; } .md h2 { font-size:17px; margin:18px 0 6px; } .md h3 { font-size:15px; margin:14px 0 4px; } .md h4 { font-size:14px; margin:12px 0 4px; }
+.md p { margin:6px 0; } .md ul, .md ol { margin:6px 0; padding-left:22px; } .md li { margin:2px 0; }
+.md table { margin:8px 0; } .md td, .md th { white-space:normal; vertical-align:top; }
+.md code { background:rgba(127,127,127,.12); padding:0 4px; border-radius:4px; font-size:12.5px; }
+.md a { color:var(--c1); } .status-bad { color:var(--bad); }
 </style>
 </head>
 <body>
 <header>
   <h1 id="title">Claudromos</h1>
   <div class="sub" id="meta"></div>
-  <nav><button data-tab="training" class="on">Training</button><button data-tab="history">History</button></nav>
+  <nav><button data-tab="training" class="on">Training</button><button data-tab="history">History</button><button data-tab="plan">Plan</button></nav>
 </header>
 <main>
 <div id="training">
@@ -60,6 +67,10 @@ svg text { fill:var(--muted); font-size:11px; }
   <section><h2>Time in heart-rate zones</h2><p class="note">Share of each week's running time, from the heart rate in each run's file and your current zones.</p><div class="legend" id="t-zones-leg"></div><div id="t-zones"></div></section>
   <section><h2>Weight</h2><p class="note">Last 26 weeks of weigh-ins.</p><div id="t-weight"></div></section>
   <section><h2>Runs, last 8 weeks</h2><p class="note">Trail runs show grade-adjusted pace (GAP). Easy: share of the run in zones 1–2.</p><div class="scroll" id="t-runs"></div></section>
+</div>
+<div id="plan" hidden>
+  <section><h2>Week by week</h2><p class="note">The plan's targets from config/plan.json, with what you did. The current week is highlighted.</p><div class="scroll" id="p-weeks"></div></section>
+  <section class="md" id="p-doc"></section>
 </div>
 <div id="history" hidden>
   <section><div class="tiles" id="h-tiles"></div></section>
@@ -200,7 +211,7 @@ const meta = DATA.meta || {};
 document.title = meta.athlete ? `Claudromos · ${meta.athlete}` : 'Claudromos';
 $('#title').textContent = meta.athlete ? `Claudromos · ${meta.athlete}` : 'Claudromos';
 $('#meta').textContent = `Last sync ${meta.last_sync ? meta.last_sync.slice(0, 16).replace('T', ' ') : '—'} · built ${meta.built ? meta.built.slice(0, 16).replace('T', ' ') : '—'}`;
-document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b)); $('#training').hidden = b.dataset.tab !== 'training'; $('#history').hidden = b.dataset.tab !== 'history'; window.dispatchEvent(new Event('resize')); });
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b)); for (const t of ['training', 'history', 'plan']) $('#' + t).hidden = b.dataset.tab !== t; window.dispatchEvent(new Event('resize')); });
 
 // ---------- training tab
 (function training() {
@@ -219,7 +230,9 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   const planFor = (w) => { if (!pStart) return null; const n = Math.round((Date.parse(w) - Date.parse(pStart)) / (7 * DAY)) + 1; if (n < 1) return { n };
     const ph = (plan.phases || []).find((p) => p.weeks[0] <= n && n <= p.weeks[1]); if (!ph) return { n, after: true };
     const [a, b] = ph.weeks, f = (r) => r ? (a === b ? r[0] : r[0] + (r[1] - r[0]) * (n - a) / (b - a)) : null;
-    return { n, focus: ph.focus || '', km: f(ph.km), hours: f(ph.hours), gain: f(ph.gain_m), lighter: !!plan.lighter_week_every && n % plan.lighter_week_every === 0 && n <= (plan.lighter_weeks_until || 1e9) }; };
+    const lw = (plan.lighter_weeks || []).find((x) => x.week === n);
+    const lighter = plan.lighter_weeks ? !!lw : !!plan.lighter_week_every && n % plan.lighter_week_every === 0 && n <= (plan.lighter_weeks_until || 1e9);
+    return { n, focus: (ph.focus || '') + (lw && lw.note ? ` (lighter week: ${lw.note})` : ''), km: lw && lw.km ? lw.km : f(ph.km), hours: f(ph.hours), gain: f(ph.gain_m), lighter, weeks: ph.weeks }; };
 
   // weeks from 26 weeks back to the end of the plan
   const first = addDays(thisWeek, -25 * 7), last = pStart && lastPlanWeek ? addDays(pStart, (lastPlanWeek - 1) * 7) : thisWeek;
@@ -312,6 +325,21 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
       if (x.w.slice(8, 10) <= '07') el('text', { x: X + bw * 0.36, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = dm(x.w).split(' ')[1]; });
     $('#t-zones-leg').innerHTML = parts.map((p) => `<label><i style="background:${p.c}"></i>${p.n}</label>`).join('') + `<label>Zones from ${Z.join(' / ')} bpm. Dashed line: 80% easy.</label>`;
   } else $('#t-zones').innerHTML = '<p class="empty">Needs the HR zone settings (sync scope "all").</p>';
+
+  // Plan tab: week by week
+  if (plan && pStart) {
+    const rows = [];
+    for (let n = 1; n <= lastPlanWeek; n++) { const w = addDays(pStart, (n - 1) * 7), x = W.find((y) => y.w === w), p = planFor(w);
+      const tgt = [p.km ? `~${fmt(p.km)} km` : '', p.hours ? `${fmt(p.hours, 1)} h` : '', p.gain ? `+${fmt(p.gain)} m` : ''].filter(Boolean).join(' · ') || '—';
+      const race = raceWeeks.get(w), notes = (DATA.journal || []).filter((j) => monday(String(j.date)) === w).length;
+      let st = '';
+      if (x && (x.past || x.cur) && p.km) { const r = x.km / p.km; st = x.cur ? 'in progress' : r > 1.15 ? 'over' : r < 0.8 ? 'under' : 'on target'; }
+      rows.push({ _cls: w === thisWeek ? 'now' : '', n, dates: span(w), focus: `${esc(p.focus || '')}${race ? ` <b>· ${esc(race.name)} ${dm(race.date)}</b>` : ''}`, tgt: (p.lighter ? 'lighter · ' : '') + tgt,
+        done: x && !x.future ? `${fmt(x.km, 1)} km · ${fmt(x.hours, 1)} h · +${fmt(x.gain)} m` : '', st, notes }); }
+    table($('#p-weeks'), [{ h: 'Week', n: 1, f: (r) => r.n }, { h: 'Dates', k: 'dates' }, { h: 'Focus', f: (r) => `<div class="wrap" style="white-space:normal;min-width:240px">${r.focus}</div>` },
+      { h: 'Target', f: (r) => esc(r.tgt) }, { h: 'Done', f: (r) => r.done }, { h: 'Status', f: (r) => `<span class="${r.st === 'on target' ? 'status-good' : r.st === 'over' || r.st === 'under' ? 'status-bad' : ''}">${r.st}</span>` },
+      { h: 'Body notes', n: 1, f: (r) => r.notes || '' }], rows);
+  } else $('#p-weeks').innerHTML = '<p class="empty">No config/plan.json yet. Ask your coach to build it from your plan.</p>';
 
   // weight
   const wsel = WEIGHT.filter((r) => r.date >= first);
@@ -441,6 +469,40 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   $('#rc-sel').onchange = drawRc; if (courses.length) drawRc(); else $('#h-rc').innerHTML = '<p class="empty">No race courses yet.</p>';
   table($('#h-courses'), [{ h: 'Course', k: 'course' }, { h: 'km', n: 1, f: (r) => fmt(r.km, 1) }, { h: 'Gain', n: 1, f: (r) => `${fmt(r.gain_m)} m` }, { h: 'Attempts', n: 1, f: (r) => fmt(r.attempts) },
     { h: 'Races', n: 1, f: (r) => fmt(r.races) }, { h: 'First', k: 'first' }, { h: 'Last', k: 'last' }], courses);
+})();
+
+// ---------- Plan tab: the plan document (config/plan.md), minimal Markdown
+(function planDoc() {
+  const md = meta.plan_md, host = $('#p-doc');
+  if (!md) { host.innerHTML = '<h2>Plan document</h2><p class="empty">Put your plan as Markdown in config/plan.md to see it here.</p>'; return; }
+  const inline = (t) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const lines = md.replace(/\r/g, '').split('\n'); let out = '', i = 0;
+  const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  while (i < lines.length) {
+    const l = lines[i];
+    if (!l.trim()) { i++; continue; }
+    let m = l.match(/^(#{1,4})\s+(.*)$/); if (m) { out += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; i++; continue; }
+    if (/^\s*\|/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
+      const head = cells(l); i += 2; let body = '';
+      while (i < lines.length && /^\s*\|/.test(lines[i])) { body += `<tr>${cells(lines[i]).map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`; i++; }
+      out += `<div class="scroll"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`; continue; }
+    if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      const stack = []; let html = '';
+      while (i < lines.length && (/^\s*([-*]|\d+\.)\s+/.test(lines[i]) || (lines[i].trim() && /^\s{2,}/.test(lines[i])))) {
+        const mm = lines[i].match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
+        if (!mm) { html += ' ' + inline(lines[i].trim()); i++; continue; }
+        const depth = Math.floor(mm[1].length / 2), tag = /\d/.test(mm[2]) ? 'ol' : 'ul';
+        while (stack.length > depth + 1) html += `</li></${stack.pop()}>`;
+        if (stack.length === depth + 1) html += '</li>'; else while (stack.length < depth + 1) { stack.push(tag); html += `<${tag}>`; }
+        html += `<li>${inline(mm[3])}`; i++; }
+      while (stack.length) html += `</li></${stack.pop()}>`;
+      out += html; continue; }
+    let para = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*\||\s*([-*]|\d+\.)\s+)/.test(lines[i])) para.push(lines[i++].trim());
+    out += `<p>${inline(para.join(' '))}</p>`;
+  }
+  host.innerHTML = out;
 })();
 </script>
 </body>
