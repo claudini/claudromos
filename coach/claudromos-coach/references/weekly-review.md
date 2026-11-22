@@ -3,7 +3,7 @@
 Weeks run Monday to Sunday unless `athlete.md` says otherwise. Review the last complete week unless asked for another.
 
 1. Get fresh data (`data.md`), then run `review.py weekly` for the week.
-2. Read the plan for that week: the plan doc or `config/plan.json` named in `athlete.md`, plus the rules in `athlete.md` (ramp limits, lighter weeks, taper and descent rules, what to skip first).
+2. Read `journal.csv` for the last 4 weeks (SKILL.md, Body notes), then the plan for that week: the plan doc or `config/plan.json` named in `athlete.md`, plus the rules in `athlete.md` (ramp limits, lighter weeks, taper and descent rules, what to skip first).
 3. Report in this order:
    1. Verdict in one or two sentences.
    2. The week against the plan: km or hours, long run, gain, number of runs, and whether the key sessions happened, judged from names, paces and gain.

@@ -13,6 +13,10 @@ This folder is a runner's Claudromos data folder: their watch data, synced from 
 
 Those files were written for Claude. Where they name Claude tools (`mcp__remote-devices__...`, `device_bash`, staging, artifacts), ignore the tool names: you are already in this folder and can read files and run commands here directly. Paths there are relative to this folder (`D` = this folder).
 
+## Body notes
+
+When the runner mentions a symptom (tightness, pain, illness, fatigue), add a line to `journal.csv` (`date,body_part,severity,note`; create it with that header if missing) and say you logged it. Read its last 4 weeks before reviews or plan advice; a repeat or anything at 3/5+ outweighs the plan.
+
 ## Running the tools
 
 Use the folder's own Python environment, which has `fitdecode` installed:

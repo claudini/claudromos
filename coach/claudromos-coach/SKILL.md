@@ -39,6 +39,12 @@ Everything specific to one runner lives in **`athlete.md`** at the root of their
 
 When the athlete states a lasting change (a new goal race, a new max HR, a changed rule, an injury they want considered), offer once to update `athlete.md` and show the lines you would change. Write it only after they agree, through the device tools, keeping every other line as it was. Add a dated line to its "Changes" section.
 
+## Body notes (journal.csv)
+
+`D/journal.csv` is the athlete's log of symptoms and how runs felt: `date,body_part,severity,note` (severity 1–5, optional). When the athlete mentions a niggle, pain, tightness, illness or fatigue, add a line for each body part the same day, in their words, and say in one line that you logged it. Don't ask first: logging what they reported is the point. Create the file with that header if it's missing.
+
+Read the last 4 weeks of it before any weekly review, plan advice or hard-session suggestion. A body part noted twice in 4 weeks, or anything at 3/5 or above, outweighs the plan: suggest easing volume and intensity, and name what to watch. The dashboard shows the notes and flags repeats.
+
 ## Health and safety
 
 - For chest pain, fainting, unusual breathlessness or signs of disordered eating, give no numeric targets; recommend seeing a doctor.

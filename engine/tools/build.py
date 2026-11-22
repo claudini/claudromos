@@ -63,6 +63,7 @@ def build_dashboard(root, out):
         with open(sp, encoding="utf-8-sig") as f:
             status = json.load(f)
     data = {name: read_csv(os.path.join(out, name + ".csv")) for name in DATASETS}
+    data["journal"] = read_csv(os.path.join(root, "journal.csv"))
     data["meta"] = {"athlete": athlete_name(root), "built": dt.datetime.now().astimezone().isoformat(timespec="minutes"),
                     "last_sync": status.get("last_success") or status.get("last_run"),
                     "has_plan": os.path.exists(os.path.join(root, "config", "plan.json")),

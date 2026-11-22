@@ -9,7 +9,8 @@ Installs from before the Claudromos rename keep the engine in `D/.sync/` with to
 | Path | Contents |
 |---|---|
 | `athlete.md` | The athlete's profile, goals, plan pointer and preferences |
-| `config/plan.json` | Plan phases with weekly targets, used by the review tool (optional) |
+| `journal.csv` | Body notes: `date,body_part,severity,note` (see SKILL.md) |
+| `config/plan.json` | Plan: `start`, `phases` (weeks, km, hours, gain_m, focus), `lighter_week_every`, `races` (name, date); used by the dashboard and review tool (optional) |
 | `config/areas.json` | Named areas (bounding boxes) the athlete runs in |
 | `config/overrides.json` | `exclude`: activity ids to ignore; `extra_races`: races the watch never tagged |
 | `activities/index.json` | One record per activity: `date`, `start_local`, `name`, `type`, `event_type` (`race` or other), `distance_m`, `duration_s`, `elevation_gain_m`, `avg_hr`, `summary`, `fit` |

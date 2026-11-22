@@ -55,6 +55,7 @@ svg text { fill:var(--muted); font-size:11px; }
 <div id="training">
   <section><div class="tiles" id="t-tiles"></div></section>
   <section><h2>Flags</h2><p class="note">This week as it stands, and last week.</p><div id="t-flags"></div></section>
+  <section><h2>Body notes</h2><p class="note">From journal.csv in your data folder: symptoms and how runs felt, last 8 weeks. Tell your coach and it adds them.</p><div class="scroll" id="t-journal"></div></section>
   <section><h2>Weekly volume against the plan</h2><p class="note" id="t-vol-note"></p><div class="legend" id="t-vol-metric"></div><div id="t-vol"></div></section>
   <section><h2>Time in heart-rate zones</h2><p class="note">Share of each week's running time, from the heart rate in each run's file and your current zones.</p><div class="legend" id="t-zones-leg"></div><div id="t-zones"></div></section>
   <section><h2>Weight</h2><p class="note">Last 26 weeks of weigh-ins.</p><div id="t-weight"></div></section>
@@ -235,7 +236,8 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
 
   // tiles
   const T = [];
-  if (cur && cur.plan && cur.plan.n >= 1 && !cur.plan.after) T.push([`Week ${cur.plan.n} of ${lastPlanWeek}`, esc(cur.plan.focus)]);
+  if (cur && cur.plan && cur.plan.n >= 1 && !cur.plan.after) T.push([`Week ${cur.plan.n} of ${lastPlanWeek}`, `Plan started ${dm(pStart)}. ${esc(cur.plan.focus)}`]);
+  else if (cur && cur.plan && cur.plan.n < 1) T.push([`${Math.round((Date.parse(pStart) - Date.parse(today)) / DAY)} days`, `to the plan start (${dm(pStart)})`]);
   for (const r of (plan && plan.races) || []) { const d = Math.round((Date.parse(r.date) - Date.parse(today)) / DAY); if (d >= 0) T.push([`${d} days`, `to ${esc(r.name)} (${dm(r.date)})`]); }
   if (cur) T.push([`${fmt(cur.km, 1)} km`, `This week so far (${span(cur.w)}), ${cur.runs} runs${cur.plan && cur.plan.km ? `; plan ~${fmt(cur.plan.km)} km` : ''}`]);
   if (prev) T.push([`${fmt(prev.km, 1)} km`, `Last week (${span(prev.w)}), long run ${fmt(prev.long, 1)} km`]);
@@ -254,6 +256,13 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   if (prev && prev.plan && prev.plan.km && prev.km < prev.plan.km * 0.8) F.push(`Last week: ${fmt(prev.km, 1)} km, under the plan's ~${fmt(prev.plan.km)} km.`);
   const hikes = RUNS.filter((r) => r.date >= addDays(thisWeek, -7) && isHike(r));
   for (const h of hikes) F.push(`${dm(h.date)} ${esc(h.name)} looks like a hike (${pace(h.pace_s_per_km)}/km, cadence ${fmt(h.avg_cadence)}): counted in time and climbing, not pace.`);
+  const J = (DATA.journal || []).map((j) => ({ ...j, date: String(j.date) })).sort((a, b) => b.date.localeCompare(a.date));
+  const parts = group(J.filter((j) => j.date >= addDays(today, -28) && j.body_part), (j) => String(j.body_part).toLowerCase());
+  for (const [bp, js] of parts) if (js.length >= 2) F.push(`${esc(bp)}: ${js.length} notes in 4 weeks (latest ${dm(js[0].date)}). Worth easing intensity and volume until it settles.`);
+  for (const j of J.filter((j) => j.date >= addDays(today, -7) && (parts.get(String(j.body_part).toLowerCase()) || []).length < 2))
+    F.push(`Body note, ${dm(j.date)}: ${esc(j.note)}${j.severity ? ` (${j.severity}/5)` : ''}.`);
+  table($('#t-journal'), [{ h: 'Date', f: (j) => dm(j.date) }, { h: 'Body part', k: 'body_part' }, { h: 'Severity', n: 1, f: (j) => j.severity ? `${j.severity}/5` : '—' }, { h: 'Note', k: 'note' }],
+    J.filter((j) => j.date >= addDays(thisWeek, -7 * 7)));
   $('#t-flags').innerHTML = F.length ? F.map((f) => `<div class="flag">• ${f}</div>`).join('') : '<p class="empty">Nothing to flag.</p>';
 
   // weekly chart: km / hours / climbing, plan targets ahead, races, lighter weeks
@@ -274,6 +283,10 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
         `${span(x.w)}: ${fmt(x.km, 1)} km, ${fmt(x.hours, 1)} h, +${fmt(x.gain)} m, ${x.runs} runs${x.plan && x.plan.n >= 1 && !x.plan.after ? `<br>Plan week ${x.plan.n}${t ? `: ~${M.f(t)} ${M.label}` : ''}${x.plan.focus ? `<br>${esc(x.plan.focus)}` : ''}` : ''}`);
       if (t) { const ln = el('line', { x1: X + bw * 0.08, x2: X + bw * 0.92, y1: Y(t), y2: Y(t), stroke: 'var(--fg)', 'stroke-width': 2, opacity: x.future ? 0.45 : 1 }, svg);
         if (x.future) tipOn(el('rect', { x: X, y: Y(t) - 8, width: bw, height: 16, fill: 'transparent' }, svg), `${span(x.w)}, plan week ${x.plan.n}: ~${M.f(t)} ${M.label}${x.plan.lighter ? ' (lighter week)' : ''}<br>${esc(x.plan.focus)}`); }
+      if (x.w === pStart) { el('line', { x1: X, x2: X, y1: 30, y2: H - B, stroke: 'var(--fg)', 'stroke-dasharray': '2 3' }, svg);
+        el('text', { x: X - 4, y: 26, 'text-anchor': 'end', fill: 'var(--fg)' }, svg).textContent = `Plan start ${dm(pStart)}`; }
+      const jn = (DATA.journal || []).filter((j) => monday(String(j.date)) === x.w);
+      if (jn.length) tipOn(el('circle', { cx: X + bw / 2, cy: H - B - 6, r: 4, fill: 'var(--c5)' }, svg), jn.map((j) => `${dm(String(j.date))}: ${esc(j.note)}`).join('<br>'));
       const race = raceWeeks.get(x.w);
       if (race) { const k = [...raceWeeks.keys()].indexOf(x.w), ly = k % 2 ? 26 : 12;
         el('line', { x1: X + bw / 2, x2: X + bw / 2, y1: ly + 4, y2: H - B, stroke: 'var(--c2)', 'stroke-dasharray': '4 3' }, svg);
@@ -284,7 +297,7 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   };
   const tabs = $('#t-vol-metric'); tabs.innerHTML = Object.entries(METRIC).map(([k, m]) => `<label><input type="radio" name="tvm" value="${k}" ${k === 'km' ? 'checked' : ''}> ${m.label}</label>`).join(' ');
   tabs.onchange = (e) => drawWeeks(e.target.value); drawWeeks('km');
-  $('#t-vol-note').textContent = plan ? 'Solid bars: done. Faint bar: this week so far (▲). Black ticks: the plan\'s target, faint ahead. Grey bands: planned lighter weeks. Dashed: race weeks.' : 'Bars: per week. Add config/plan.json to show plan targets and races.';
+  $('#t-vol-note').textContent = plan ? 'Solid bars: done. Faint bar: this week so far (▲). Black ticks: the plan\'s target, faint ahead. Grey bands: planned lighter weeks. Dashed: plan start and race weeks. Red dot: a body note that week.' : 'Bars: per week. Add config/plan.json to show plan targets and races.';
 
   // time in zones, % of running time per week
   const zw = W.filter((x) => !x.future);
