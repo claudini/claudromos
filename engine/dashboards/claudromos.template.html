@@ -67,11 +67,10 @@ svg text { fill:var(--muted); font-size:11px; }
   <section><h2>Average pace by month</h2><p class="note">Median of non-race runs of 3 km or more (at least 2 in the month). Trail is grade-adjusted. Faster is higher.</p><div class="legend" id="h-pace-leg"></div><div id="h-pace"></div></section>
   <section><h2>Usual runs: pace by area, quarter by quarter</h2><p class="note">Median grade-adjusted pace of non-race runs of 3 km or more, per quarter with at least 2 runs. Click an area to show or hide it.</p><div class="legend" id="h-area-leg"></div><div id="h-area"></div><div class="scroll" id="h-area-status"></div></section>
   <section><h2>VO2 max</h2><p class="note" id="h-vo2-note">Watch estimate. Dashed lines mark heart-rate setting changes, which shift the estimate.</p><div id="h-vo2"></div></section>
-  <section><h2>VO2 max against road pace</h2><p class="note" id="h-vp-note"></p><div id="h-vp"></div></section>
   <section><h2>Weight</h2><div id="h-weight"></div></section>
-  <section><h2>Versus</h2><p class="note">Any two monthly metrics on one chart.
+  <section><h2>Correlation is not causation</h2><p class="note">Any two monthly metrics on one chart. Lines moving together don't mean one causes the other.
     <select id="vs-a"></select> against <select id="vs-b"></select></p><div id="h-vs"></div></section>
-  <section><h2>Race comparisons</h2><p class="note">Every attempt at a course, races and training runs on the same route. Time is against the fastest race on it; a minus means faster. <select id="rc-sel"></select></p><div class="scroll" id="h-rc"></div></section>
+  <section><h2>Race progress</h2><p class="note">Every attempt at a course, races and training runs on the same route. Time is against the fastest race on it; a minus means faster. <select id="rc-sel"></select></p><div class="scroll" id="h-rc"></div></section>
   <section><h2>All race courses</h2><div class="scroll" id="h-courses"></div></section>
 </div>
 </main>
@@ -183,7 +182,8 @@ function volume(rs) { const tr = rs.filter((r) => !isRace(r) && r.surface === 't
     road_pace: (() => { const p = rs.filter((r) => paceOK(r) && r.surface === 'road'); return p.length >= 2 ? med(p.map((r) => num(r.pace_s_per_km))) : null; })(),
     trail_gap: (() => { const p = rs.filter((r) => paceOK(r) && r.surface === 'trail'); return p.length >= 2 ? med(p.map(gapOf)) : null; })(),
     race_pace: (() => { const p = rs.filter((r) => isRace(r) && r.surface === 'road' && num(r.pace_s_per_km)); return p.length ? med(p.map((r) => num(r.pace_s_per_km))) : null; })(),
-    avg_hr: (() => { const p = rs.filter((r) => !isRace(r) && num(r.avg_hr)); return p.length >= 2 ? mean(p.map((r) => num(r.avg_hr))) : null; })() }; }
+    avg_hr: (() => { const p = rs.filter((r) => !isRace(r) && num(r.avg_hr)); return p.length >= 2 ? mean(p.map((r) => num(r.avg_hr))) : null; })(),
+    avg_cadence: (() => { const p = rs.filter((r) => !isRace(r) && r.surface !== 'treadmill' && num(r.avg_cadence)); return p.length >= 2 ? mean(p.map((r) => num(r.avg_cadence))) : null; })() }; }
 const byMonth = group(RUNS, (r) => r.month), byYear = group(RUNS, (r) => r.year);
 const MONTHS = RUNS.length ? monthRange(RUNS[0].month, RUNS[RUNS.length - 1].month).map((m) => ({ month: m, ...volume(byMonth.get(m) || []) })) : [];
 const YEARS = [...byYear.keys()].sort().map((y) => ({ year: y, ...volume(byYear.get(y)) }));
@@ -285,20 +285,12 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
   xyChart($('#h-vo2'), { series: [{ name: 'VO2 max', color: 'var(--c1)', breakGap: 0.3, pts: VO2.map((r) => ({ x: fy(r.date), y: r.v, tip: `${r.date}: ${fmt(r.v, 1)}` })) }], markers, xint: true, yfmt: (v) => fmt(v, 0) });
   if (!VO2.length) $('#h-vo2-note').textContent = 'No VO2 max readings synced (they need the "all" sync scope and a watch that estimates it).';
 
-  // VO2 vs road pace
-  const vp = MONTHS.filter((m) => m.road_pace && VO2M.has(m.month)).map((m) => ({ month: m.month, x: VO2M.get(m.month), y: m.road_pace }));
-  if (vp.length >= 4) { const mx = mean(vp.map((p) => p.x)), my = mean(vp.map((p) => p.y)); let sxy = 0, sxx = 0, syy = 0; for (const p of vp) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; syy += (p.y - my) ** 2; }
-    const r = sxy / Math.sqrt(sxx * syy), b = sxy / sxx, xs = vp.map((p) => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
-    $('#h-vp-note').textContent = `Each dot is a month with a VO2 max reading and at least 2 road runs. r = ${r.toFixed(2)} over ${vp.length} months; each VO2 max point goes with about ${Math.abs(Math.round(b))} s/km ${b < 0 ? 'faster' : 'slower'} road pace.`;
-    xyChart($('#h-vp'), { h: 280, series: [{ name: 'Months', color: 'var(--c1)', line: false, dots: true, pts: vp.map((p) => ({ x: p.x, y: p.y, tip: `${p.month}: VO2 max ${fmt(p.x, 1)}, road ${pace(p.y)}/km` })) }],
-      invert: true, yfmt: pace, xlabel: (t) => fmt(t, 0), trend: { x0: lo, y0: my + b * (lo - mx), x1: hi, y1: my + b * (hi - mx) } });
-  } else { $('#h-vp-note').textContent = 'Needs at least 4 months with both a VO2 max reading and 2 road runs.'; $('#h-vp').innerHTML = ''; }
-
   xyChart($('#h-weight'), { h: 240, series: [{ name: 'Weight', color: 'var(--c1)', dots: true, r: 2.2, breakGap: 0.5, pts: WEIGHT.map((r) => ({ x: fy(r.date), y: r.v, tip: `${r.date}: ${fmt(r.v, 1)} kg` })) }], xint: true, yfmt: (v) => fmt(v, 0) });
 
-  // Versus
+  // Correlation is not causation (two monthly metrics)
   const METRICS = { road_pace: { name: 'Road pace (min/km)', f: (m) => m.road_pace, fmt: pace, inv: true }, trail_gap: { name: 'Trail grade-adjusted pace', f: (m) => m.trail_gap, fmt: pace, inv: true },
     km: { name: 'Distance (km)', f: (m) => m.km || null, fmt: (v) => fmt(v) }, avg_hr: { name: 'Average HR (bpm)', f: (m) => m.avg_hr, fmt: (v) => fmt(v) },
+    avg_cadence: { name: 'Average cadence (spm)', f: (m) => m.avg_cadence, fmt: (v) => fmt(v) },
     vo2max: { name: 'VO2 max', f: (m) => VO2M.get(m.month) ?? null, fmt: (v) => fmt(v, 1) }, weight: { name: 'Weight (kg)', f: (m) => WM.get(m.month) ?? null, fmt: (v) => fmt(v, 1) } };
   for (const id of ['#vs-a', '#vs-b']) $(id).innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.name}</option>`).join('');
   $('#vs-a').value = 'road_pace'; $('#vs-b').value = VO2.length ? 'vo2max' : 'weight';

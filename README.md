@@ -11,7 +11,7 @@ Claudromos syncs your Garmin data through the Garmin Connect Personal API to a f
 - **Sync** every 3 hours: every activity with its original FIT file, weigh-ins, and optionally everything else the API offers (VO2 max, HRV, sleep, daily summaries, HR zone settings).
 - **Dashboard** at `Claudromos/dashboards/claudromos.html`: double-click to open, works offline.
   - Training: last and current week, flags, weekly volume against your plan, weight, recent runs.
-  - History: totals, volume by year and month (road, trail, races), elevation, pace by month (trail grade-adjusted), pace in the areas you usually run, VO2 max with HR setting changes, VO2 max against road pace, weight, a Versus chart for any two metrics, race comparisons.
+  - History: totals, volume by year and month (road, trail, races), elevation, pace by month (trail grade-adjusted), pace in the areas you usually run, VO2 max with HR setting changes, weight, a "correlation is not causation" chart for any two monthly metrics (pace, VO2 max, HR, cadence, weight), race progress.
 - **Coach**: the `claudromos-coach` skill for Claude reads your data and your own `athlete.md` profile.
 
 Your data stays on your computer. Nothing is uploaded unless you ask Claude to.
@@ -105,7 +105,7 @@ All optional, in `Claudromos/config/`:
 | --- | --- |
 | `areas.json` | The areas you run in. Detected from your GPS tracks on the first build, named "Area 1 near ..." until you (or Claude) rename them |
 | `plan.json` | Your training plan's phases and weekly targets, for the Training tab and weekly reviews |
-| `overrides.json` | `exclude`: activity ids to ignore (an old import); `extra_races`: races your watch never tagged; `rename_default_names`: `false` keeps Garmin's default names ("Bucharest Running") instead of showing the area the run was in |
+| `overrides.json` | `exclude`: activity ids to ignore (an old import); `extra_races`: races your watch never tagged; `rename_default_names`: `false` keeps Garmin's default names ("Bucharest Running") instead of showing the area the run was in; `races_only_courses`: race ids whose course should list races only (a one-off race on a loop you also train on) |
 | `race_words.json` | Words that mark a likely race in a run's name |
 
 `athlete.md` (in the data folder) is your profile for the coach. None of these files belong in the repo.

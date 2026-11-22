@@ -298,6 +298,7 @@ def main(root, out, areas_path=None):
             "gain_m": round(r.get("elevation_gain_m") or 0),
             "gain_per_km": round((r.get("elevation_gain_m") or 0) / km, 1) if km >= 0.5 else "",
             "avg_hr": round(r["avg_hr"]) if r.get("avg_hr") else "",
+            "avg_cadence": round(s["averageRunningCadenceInStepsPerMinute"]) if s.get("averageRunningCadenceInStepsPerMinute") else "",
             "gap_s_per_km": g.get("gap_s_per_km") or "", "moving_min": g.get("moving_min") or "",
             "area": area, "place": s.get("locationName") or "", "course_id": "",
             "_start": st, "_track": g.get("track") or [],
@@ -344,6 +345,9 @@ def main(root, out, areas_path=None):
                 break
         else:
             groups.append([x])
+    # config/overrides.json "races_only_courses": [race activity ids]: the course of that race counts its races
+    # only, for a one-off race whose route is also an everyday training loop.
+    races_only = {str(i) for i in cfg.get("races_only_courses", [])}
     courses, course_runs = [], []
     for i, g in enumerate(sorted(groups, key=lambda g: g[-1]["date"], reverse=True), 1):
         ref = max(g, key=lambda x: len(x["_track"]))
@@ -355,7 +359,7 @@ def main(root, out, areas_path=None):
             if abs(x["km"] - ref["km"]) > 0.15 * ref["km"]:
                 continue
             c1, c2 = coverage(x["_track"], ref["_track"]), coverage(ref["_track"], x["_track"])
-            if min(c1, c2) >= 0.8 or x in g:
+            if x in g or (min(c1, c2) >= 0.8 and not any(y["id"] in races_only for y in g)):
                 members.append((x, round(100 * min(c1, c2))))
         if len(members) < 1:
             continue
@@ -378,7 +382,7 @@ def main(root, out, areas_path=None):
             w.writerows(rows)
 
     run_cols = ["id", "date", "year", "month", "name", "garmin_name", "type", "surface", "race", "km", "minutes", "pace_s_per_km",
-                "gap_s_per_km", "moving_min", "gain_m", "gain_per_km", "avg_hr", "area", "place", "course_id"]
+                "gap_s_per_km", "moving_min", "gain_m", "gain_per_km", "avg_hr", "avg_cadence", "area", "place", "course_id"]
     write("runs_all.csv", runs, run_cols)
     write("courses.csv", courses, ["course_id", "course", "km", "gain_m", "attempts", "races", "first", "last"])
     write("course_runs.csv", sorted(course_runs, key=lambda r: (r["course_id"], r["date"])),
