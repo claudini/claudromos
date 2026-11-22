@@ -6,6 +6,10 @@ Claudromos syncs your Garmin data through the Garmin Connect Personal API to a f
 
 *Dromos* is Greek for a run, a race, or the racecourse itself.
 
+## Demo
+
+[demo/claudromos-demo.html](demo/claudromos-demo.html) is the dashboard filled with made-up data for an invented runner. GitHub shows HTML files as code, so download it (**Download raw file** on the file's page) and double-click it. To regenerate it with today's dates: `python3 engine/tools/demo.py`.
+
 ## What you get
 
 - **Sync** every 3 hours: every activity with its original FIT file, weigh-ins, and optionally everything else the API offers (VO2 max, HRV, sleep, daily summaries, HR zone settings).

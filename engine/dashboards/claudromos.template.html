@@ -210,7 +210,7 @@ const CHANGES = DATA.settings_changes.filter((c) => /max_hr/.test(c.setting));
 const meta = DATA.meta || {};
 document.title = meta.athlete ? `Claudromos · ${meta.athlete}` : 'Claudromos';
 $('#title').textContent = meta.athlete ? `Claudromos · ${meta.athlete}` : 'Claudromos';
-$('#meta').textContent = `Last sync ${meta.last_sync ? meta.last_sync.slice(0, 16).replace('T', ' ') : '—'} · built ${meta.built ? meta.built.slice(0, 16).replace('T', ' ') : '—'}`;
+$('#meta').textContent = (meta.demo ? 'Demo: every number here is made up. ' : '') + `Last sync ${meta.last_sync ? meta.last_sync.slice(0, 16).replace('T', ' ') : '—'} · built ${meta.built ? meta.built.slice(0, 16).replace('T', ' ') : '—'}`;
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b)); for (const t of ['training', 'history', 'plan']) $('#' + t).hidden = b.dataset.tab !== t; window.dispatchEvent(new Event('resize')); });
 
 // ---------- training tab
