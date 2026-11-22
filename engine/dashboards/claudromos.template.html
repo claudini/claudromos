@@ -54,10 +54,11 @@ svg text { fill:var(--muted); font-size:11px; }
 <main>
 <div id="training">
   <section><div class="tiles" id="t-tiles"></div></section>
-  <section><h2>Flags for last week</h2><div id="t-flags"></div></section>
-  <section><h2 id="t-vol-title">Weekly volume</h2><p class="note" id="t-vol-note"></p><div id="t-vol"></div></section>
+  <section><h2>Flags</h2><p class="note">This week as it stands, and last week.</p><div id="t-flags"></div></section>
+  <section><h2>Weekly volume against the plan</h2><p class="note" id="t-vol-note"></p><div class="legend" id="t-vol-metric"></div><div id="t-vol"></div></section>
+  <section><h2>Time in heart-rate zones</h2><p class="note">Share of each week's running time, from the heart rate in each run's file and your current zones.</p><div class="legend" id="t-zones-leg"></div><div id="t-zones"></div></section>
   <section><h2>Weight</h2><p class="note">Last 26 weeks of weigh-ins.</p><div id="t-weight"></div></section>
-  <section><h2>Runs, last 8 weeks</h2><div class="scroll" id="t-runs"></div></section>
+  <section><h2>Runs, last 8 weeks</h2><p class="note">Trail runs show grade-adjusted pace (GAP). Easy: share of the run in zones 1–2.</p><div class="scroll" id="t-runs"></div></section>
 </div>
 <div id="history" hidden>
   <section><div class="tiles" id="h-tiles"></div></section>
@@ -68,7 +69,7 @@ svg text { fill:var(--muted); font-size:11px; }
   <section><h2>Usual runs: pace by area, quarter by quarter</h2><p class="note">Median grade-adjusted pace of non-race runs of 3 km or more, per quarter with at least 2 runs. Click an area to show or hide it.</p><div class="legend" id="h-area-leg"></div><div id="h-area"></div><div class="scroll" id="h-area-status"></div></section>
   <section><h2>VO2 max</h2><p class="note" id="h-vo2-note">Watch estimate. Dashed lines mark heart-rate setting changes, which shift the estimate.</p><div id="h-vo2"></div></section>
   <section><h2>Weight</h2><div id="h-weight"></div></section>
-  <section><h2>Correlation is not causation</h2><p class="note">Any two monthly metrics on one chart. Lines moving together don't mean one causes the other.
+  <section><h2>Correlation does not imply causation</h2><p class="note">Any two monthly metrics on one chart. Lines moving together don't mean one causes the other.
     <select id="vs-a"></select> against <select id="vs-b"></select></p><div id="h-vs"></div></section>
   <section><h2>Race progress</h2><p class="note">Every attempt at a course, races and training runs on the same route. Time is against the fastest race on it; a minus means faster. <select id="rc-sel"></select></p><div class="scroll" id="h-rc"></div></section>
   <section><h2>All race courses</h2><div class="scroll" id="h-courses"></div></section>
@@ -202,26 +203,117 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
 
 // ---------- training tab
 (function training() {
-  const weeks = DATA.weeks.map((w) => ({ ...w, week_start: String(w.week_start) }));
-  const done = weeks.filter((w) => w.complete === 'yes'), last = done[done.length - 1], cur = weeks.find((w) => w.complete === 'no');
-  const lastW = WEIGHT[WEIGHT.length - 1];
-  tiles($('#t-tiles'), [
-    [last ? `${fmt(last.km, 1)} km` : '—', last ? `Last week (${last.week_start})${last.target_km ? `, plan ~${fmt(last.target_km)} km` : ''}` : 'Last week'],
-    [cur ? `${fmt(cur.km, 1)} km` : '—', cur ? `This week so far, ${cur.runs} runs` : 'This week'],
-    [last ? `${fmt(last.long_run_km, 1)} km` : '—', 'Long run last week'],
-    [lastW ? `${fmt(lastW.v, 1)} kg` : '—', lastW ? `Weight on ${lastW.date}` : 'Weight'],
-  ]);
-  $('#t-flags').innerHTML = DATA.flags.length ? DATA.flags.map((f) => `<div class="flag">• ${esc(f.flag)}</div>`).join('') : '<p class="empty">No flags.</p>';
-  $('#t-vol-title').textContent = meta.has_plan ? 'Weekly volume against the plan' : 'Weekly volume';
-  $('#t-vol-note').textContent = meta.has_plan ? 'Bars: km run. Black ticks: the plan\'s km target. Faint bar: the current, unfinished week.' : 'Bars: km run per week. Add config/plan.json to show plan targets.';
-  barChart($('#t-vol'), weeks.map((w) => ({ ...w, _faint: w.complete === 'no' })), { stacks: [{ key: 'km', color: 'var(--c1)' }], target: 'target_km', values: false, maxLabels: 13,
-    label: (w) => w.week_start.slice(5), tip: (w) => `Week of ${w.week_start}: ${fmt(w.km, 1)} km, ${w.runs} runs, ${fmt(w.hours, 1)} h, +${fmt(w.gain_m)} m${w.target_km ? `<br>Plan: ~${fmt(w.target_km)} km` : ''}${w.focus ? `<br>${esc(w.focus)}` : ''}` });
-  const since = weeks.length ? weeks[0].week_start : '';
-  const wsel = WEIGHT.filter((r) => r.date >= since);
-  xyChart($('#t-weight'), { h: 220, series: [{ name: 'Weight', color: 'var(--c1)', dots: true, pts: wsel.map((r) => ({ x: fy(r.date), y: r.v, tip: `${r.date}: ${fmt(r.v, 1)} kg` })) }], yfmt: (v) => fmt(v, 1), xmin: since ? fy(since) : undefined,
-    xticks: (() => { if (!since) return []; const out = []; for (const m of monthRange(since.slice(0, 7), new Date().toISOString().slice(0, 7))) out.push(m); return out; })(), xpos: (m) => fy(m + '-01'), xlabel: (m) => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m.slice(5) - 1] });
-  table($('#t-runs'), [{ h: 'Date', k: 'date' }, { h: 'Run', k: 'name' }, { h: 'Type', f: (r) => esc(String(r.type).replace('_', ' ')) + (r.race === 'yes' ? ' · race' : '') },
-    { h: 'km', n: 1, f: (r) => fmt(r.km, 2) }, { h: 'Time', n: 1, f: (r) => hm(r.minutes) }, { h: 'Pace', n: 1, f: (r) => pace(r.pace_s_per_km) }, { h: 'Gain', n: 1, f: (r) => `${fmt(r.gain_m)} m` }, { h: 'Avg HR', n: 1, f: (r) => fmt(r.avg_hr) }], DATA.runs);
+  const plan = meta.plan, Z = meta.zones;
+  const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10);
+  const monday = (d) => { const t = Date.parse(d.slice(0, 10) + 'T00:00:00Z'), wd = (new Date(t).getUTCDay() + 6) % 7; return iso(t - wd * DAY); };
+  const addDays = (d, n) => iso(Date.parse(d + 'T00:00:00Z') + n * DAY);
+  const dm = (d) => `${+d.slice(8, 10)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+d.slice(5, 7) - 1]}`;
+  const span = (w) => `${dm(w)}–${dm(addDays(w, 6))}`;
+  const today = new Date().toISOString().slice(0, 10), thisWeek = monday(today);
+  const isHike = (r) => !isRace(r) && r.surface === 'trail' && ((num(r.pace_s_per_km) || 0) > 900 || (num(r.avg_cadence) || 999) < 100);  // over 15:00/km overall, or walking cadence
+
+  // plan for a week (same rules as review.py)
+  const pStart = plan && plan.start ? monday(plan.start) : null;
+  const lastPlanWeek = plan ? Math.max(0, ...(plan.phases || []).map((p) => p.weeks[1])) : 0;
+  const planFor = (w) => { if (!pStart) return null; const n = Math.round((Date.parse(w) - Date.parse(pStart)) / (7 * DAY)) + 1; if (n < 1) return { n };
+    const ph = (plan.phases || []).find((p) => p.weeks[0] <= n && n <= p.weeks[1]); if (!ph) return { n, after: true };
+    const [a, b] = ph.weeks, f = (r) => r ? (a === b ? r[0] : r[0] + (r[1] - r[0]) * (n - a) / (b - a)) : null;
+    return { n, focus: ph.focus || '', km: f(ph.km), hours: f(ph.hours), gain: f(ph.gain_m), lighter: !!plan.lighter_week_every && n % plan.lighter_week_every === 0 && n <= (plan.lighter_weeks_until || 1e9) }; };
+
+  // weeks from 26 weeks back to the end of the plan
+  const first = addDays(thisWeek, -25 * 7), last = pStart && lastPlanWeek ? addDays(pStart, (lastPlanWeek - 1) * 7) : thisWeek;
+  const byWeek = group(RUNS.filter((r) => r.date >= first), (r) => monday(r.date));
+  const W = [];
+  for (let w = first; w <= (last > thisWeek ? last : thisWeek); w = addDays(w, 7)) {
+    const rs = byWeek.get(w) || [], zs = [1, 2, 3, 4, 5].map((i) => sum(rs, (r) => r[`z${i}_s`]));
+    W.push({ w, past: w < thisWeek, cur: w === thisWeek, future: w > thisWeek, runs: rs.length, km: sum(rs, (r) => r.km), hours: sum(rs, (r) => r.minutes) / 60,
+      gain: sum(rs, (r) => r.gain_m), long: Math.max(0, ...rs.map((r) => num(r.km) || 0)), zs, zt: zs.reduce((a, b) => a + b, 0), plan: planFor(w) });
+  }
+  const cur = W.find((x) => x.cur), prev = W.filter((x) => x.past).slice(-1)[0];
+  const last28 = RUNS.filter((r) => r.date > addDays(today, -28) && r.date <= today), last7 = RUNS.filter((r) => r.date > addDays(today, -7) && r.date <= today);
+  const acute = sum(last7, (r) => r.km), chronic = sum(last28, (r) => r.km) / 4, ratio = chronic ? acute / chronic : null;
+
+  // tiles
+  const T = [];
+  if (cur && cur.plan && cur.plan.n >= 1 && !cur.plan.after) T.push([`Week ${cur.plan.n} of ${lastPlanWeek}`, esc(cur.plan.focus)]);
+  for (const r of (plan && plan.races) || []) { const d = Math.round((Date.parse(r.date) - Date.parse(today)) / DAY); if (d >= 0) T.push([`${d} days`, `to ${esc(r.name)} (${dm(r.date)})`]); }
+  if (cur) T.push([`${fmt(cur.km, 1)} km`, `This week so far (${span(cur.w)}), ${cur.runs} runs${cur.plan && cur.plan.km ? `; plan ~${fmt(cur.plan.km)} km` : ''}`]);
+  if (prev) T.push([`${fmt(prev.km, 1)} km`, `Last week (${span(prev.w)}), long run ${fmt(prev.long, 1)} km`]);
+  if (ratio !== null) T.push([fmt(ratio, 2), `Load: last 7 days ${fmt(acute)} km against ${fmt(chronic)} km a week over 4 weeks`]);
+  const lw = WEIGHT[WEIGHT.length - 1], ago = WEIGHT.filter((r) => r.date <= addDays(lw ? lw.date : today, -28)).slice(-1)[0];
+  if (lw) T.push([`${fmt(lw.v, 1)} kg`, `Weight on ${dm(lw.date)}${ago ? `, ${lw.v - ago.v >= 0 ? '+' : '−'}${fmt(Math.abs(lw.v - ago.v), 1)} kg in 4 weeks` : ''}`]);
+  tiles($('#t-tiles'), T);
+
+  // flags: this week live, last week complete
+  const F = [];
+  if (cur && cur.plan && cur.plan.km) { const t = cur.plan.km;
+    if (cur.km > t * 1.15) F.push(`This week: ${fmt(cur.km, 1)} km, ${fmt((cur.km / t - 1) * 100)}% over the plan's ~${fmt(t)} km.`);
+    if (cur.plan.lighter) F.push('This is a planned lighter week (about 25% less).'); }
+  if (cur && prev && prev.km && cur.km > prev.km * 1.1) F.push(`Ramp: this week is already ${fmt((cur.km / prev.km - 1) * 100)}% above last week (${fmt(prev.km, 1)} km); the plan's rule is about 10%.`);
+  if (ratio !== null && ratio > 1.3) F.push(`Load ratio ${fmt(ratio, 2)}: the last 7 days are well above your 4-week average; injury risk rises above about 1.3.`);
+  if (prev && prev.plan && prev.plan.km && prev.km < prev.plan.km * 0.8) F.push(`Last week: ${fmt(prev.km, 1)} km, under the plan's ~${fmt(prev.plan.km)} km.`);
+  const hikes = RUNS.filter((r) => r.date >= addDays(thisWeek, -7) && isHike(r));
+  for (const h of hikes) F.push(`${dm(h.date)} ${esc(h.name)} looks like a hike (${pace(h.pace_s_per_km)}/km, cadence ${fmt(h.avg_cadence)}): counted in time and climbing, not pace.`);
+  $('#t-flags').innerHTML = F.length ? F.map((f) => `<div class="flag">• ${f}</div>`).join('') : '<p class="empty">Nothing to flag.</p>';
+
+  // weekly chart: km / hours / climbing, plan targets ahead, races, lighter weeks
+  const METRIC = { km: { label: 'km', v: (x) => x.km, t: (p) => p && p.km, f: (v) => fmt(v) }, hours: { label: 'hours', v: (x) => x.hours, t: (p) => p && p.hours, f: (v) => fmt(v, 1) },
+    gain: { label: 'climbing (m)', v: (x) => x.gain, t: (p) => p && p.gain, f: (v) => fmt(v) } };
+  const raceWeeks = new Map(((plan && plan.races) || []).map((r) => [monday(r.date), r]));
+  const drawWeeks = (key) => {
+    const M = METRIC[key], host = $('#t-vol'); host.innerHTML = '';
+    const Wd = 1000, H = 300, L = 56, R = 16, T0 = 40, B = 28, svg = el('svg', { viewBox: `0 0 ${Wd} ${H}` }, host);
+    const hi = Math.max(1, ...W.map((x) => Math.max(M.v(x), M.t(x.plan) || 0))), ticks = niceTicks(0, hi), top = Math.max(hi, ticks[ticks.length - 1]);
+    const Y = (v) => H - B - v / top * (H - T0 - B), bw = (Wd - L - R) / W.length;
+    const g = el('g', { class: 'grid' }, svg);
+    for (const t of ticks) { el('line', { x1: L, x2: Wd - R, y1: Y(t), y2: Y(t) }, g); el('text', { x: L - 6, y: Y(t) + 4, 'text-anchor': 'end' }, svg).textContent = M.f(t); }
+    W.forEach((x, i) => { const X = L + i * bw;
+      if (x.plan && x.plan.lighter) el('rect', { x: X, y: T0, width: bw, height: H - T0 - B, fill: 'var(--line)', opacity: 0.6 }, svg);
+      const v = M.v(x), t = M.t(x.plan);
+      if (!x.future && v) tipOn(el('rect', { x: X + bw * 0.14, y: Y(v), width: bw * 0.72, height: Y(0) - Y(v), fill: 'var(--c1)', opacity: x.cur ? 0.5 : 1 }, svg),
+        `${span(x.w)}: ${fmt(x.km, 1)} km, ${fmt(x.hours, 1)} h, +${fmt(x.gain)} m, ${x.runs} runs${x.plan && x.plan.n >= 1 && !x.plan.after ? `<br>Plan week ${x.plan.n}${t ? `: ~${M.f(t)} ${M.label}` : ''}${x.plan.focus ? `<br>${esc(x.plan.focus)}` : ''}` : ''}`);
+      if (t) { const ln = el('line', { x1: X + bw * 0.08, x2: X + bw * 0.92, y1: Y(t), y2: Y(t), stroke: 'var(--fg)', 'stroke-width': 2, opacity: x.future ? 0.45 : 1 }, svg);
+        if (x.future) tipOn(el('rect', { x: X, y: Y(t) - 8, width: bw, height: 16, fill: 'transparent' }, svg), `${span(x.w)}, plan week ${x.plan.n}: ~${M.f(t)} ${M.label}${x.plan.lighter ? ' (lighter week)' : ''}<br>${esc(x.plan.focus)}`); }
+      const race = raceWeeks.get(x.w);
+      if (race) { const k = [...raceWeeks.keys()].indexOf(x.w), ly = k % 2 ? 26 : 12;
+        el('line', { x1: X + bw / 2, x2: X + bw / 2, y1: ly + 4, y2: H - B, stroke: 'var(--c2)', 'stroke-dasharray': '4 3' }, svg);
+        el('text', { x: X + bw / 2 + (i > W.length - 8 ? -4 : 0), y: ly, 'text-anchor': i > W.length - 8 ? 'end' : 'middle', fill: 'var(--c2)' }, svg).textContent = race.name; }
+      if (x.cur) el('text', { x: X + bw / 2, y: H - B + 12, 'text-anchor': 'middle', fill: 'var(--fg)' }, svg).textContent = '▲';
+      if (x.w.slice(8, 10) <= '07') el('text', { x: X + bw / 2, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = dm(x.w).split(' ')[1];
+    });
+  };
+  const tabs = $('#t-vol-metric'); tabs.innerHTML = Object.entries(METRIC).map(([k, m]) => `<label><input type="radio" name="tvm" value="${k}" ${k === 'km' ? 'checked' : ''}> ${m.label}</label>`).join(' ');
+  tabs.onchange = (e) => drawWeeks(e.target.value); drawWeeks('km');
+  $('#t-vol-note').textContent = plan ? 'Solid bars: done. Faint bar: this week so far (▲). Black ticks: the plan\'s target, faint ahead. Grey bands: planned lighter weeks. Dashed: race weeks.' : 'Bars: per week. Add config/plan.json to show plan targets and races.';
+
+  // time in zones, % of running time per week
+  const zw = W.filter((x) => !x.future);
+  if (Z) {
+    const host = $('#t-zones'); host.innerHTML = '';
+    const Wd = 1000, H = 220, L = 56, R = 16, T0 = 10, B = 28, svg = el('svg', { viewBox: `0 0 ${Wd} ${H}` }, host), bw = (Wd - L - R) / zw.length;
+    const Y = (p) => H - B - p * (H - T0 - B), parts = [{ k: [0, 1], c: 'var(--c3)', n: 'Easy (zones 1–2)' }, { k: [2], c: 'var(--c7)', n: 'Zone 3' }, { k: [3, 4], c: 'var(--c5)', n: 'Hard (zones 4–5)' }];
+    for (const p of [0, 0.5, 0.8, 1]) { el('line', { x1: L, x2: Wd - R, y1: Y(p), y2: Y(p), stroke: p === 0.8 ? 'var(--grey)' : 'var(--line)', 'stroke-dasharray': p === 0.8 ? '4 4' : '' }, svg); el('text', { x: L - 6, y: Y(p) + 4, 'text-anchor': 'end' }, svg).textContent = `${p * 100}%`; }
+    zw.forEach((x, i) => { if (!x.zt) return; let y0 = 0; const X = L + i * bw + bw * 0.14;
+      const tip = `${span(x.w)}: ${parts.map((p) => { const s = p.k.reduce((a, k) => a + x.zs[k], 0); return `${p.n} ${fmt(s / x.zt * 100)}% (${fmt(s / 60)} min)`; }).join('<br>')}`;
+      for (const p of parts) { const s = p.k.reduce((a, k) => a + x.zs[k], 0) / x.zt; if (!s) continue; tipOn(el('rect', { x: X, y: Y(y0 + s), width: bw * 0.72, height: Y(y0) - Y(y0 + s), fill: p.c, opacity: x.cur ? 0.5 : 1 }, svg), tip); y0 += s; }
+      if (x.w.slice(8, 10) <= '07') el('text', { x: X + bw * 0.36, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = dm(x.w).split(' ')[1]; });
+    $('#t-zones-leg').innerHTML = parts.map((p) => `<label><i style="background:${p.c}"></i>${p.n}</label>`).join('') + `<label>Zones from ${Z.join(' / ')} bpm. Dashed line: 80% easy.</label>`;
+  } else $('#t-zones').innerHTML = '<p class="empty">Needs the HR zone settings (sync scope "all").</p>';
+
+  // weight
+  const wsel = WEIGHT.filter((r) => r.date >= first);
+  xyChart($('#t-weight'), { h: 220, series: [{ name: 'Weight', color: 'var(--c1)', dots: true, pts: wsel.map((r) => ({ x: fy(r.date), y: r.v, tip: `${r.date}: ${fmt(r.v, 1)} kg` })) }], yfmt: (v) => fmt(v, 1), xmin: fy(first),
+    xticks: monthRange(first.slice(0, 7), today.slice(0, 7)), xpos: (m) => fy(m + '-01'), xlabel: (m) => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m.slice(5) - 1] });
+
+  // runs, last 8 weeks
+  const zoneOf = (hr) => !Z || !hr ? '—' : `Z${Math.max(1, Z.filter((f) => hr >= f).length)}`;
+  const recent = RUNS.filter((r) => r.date >= addDays(thisWeek, -7 * 7)).reverse();
+  table($('#t-runs'), [{ h: 'Date', f: (r) => dm(r.date) }, { h: 'Run', k: 'name' },
+    { h: 'Surface', f: (r) => (isHike(r) ? 'hike' : r.surface) + (isRace(r) ? ' · race' : '') }, { h: 'km', n: 1, f: (r) => fmt(r.km, 1) }, { h: 'Time', n: 1, f: (r) => hm(r.minutes) },
+    { h: 'Pace', n: 1, f: (r) => r.surface === 'trail' ? `${pace(gapOf(r))} GAP` : pace(r.pace_s_per_km) }, { h: 'Gain', n: 1, f: (r) => `${fmt(r.gain_m)} m` },
+    { h: 'Avg HR', n: 1, f: (r) => r.avg_hr ? `${fmt(r.avg_hr)} ${zoneOf(num(r.avg_hr))}` : '—' },
+    { h: 'Easy', n: 1, f: (r) => { const t = [1, 2, 3, 4, 5].reduce((a, i) => a + (num(r[`z${i}_s`]) || 0), 0); return t ? `${fmt(((num(r.z1_s) || 0) + (num(r.z2_s) || 0)) / t * 100)}%` : '—'; } },
+    { h: 'Cadence', n: 1, f: (r) => r.avg_cadence ? fmt(r.avg_cadence) : '—' }], recent);
 })();
 
 // ---------- history tab
@@ -287,7 +379,7 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { docum
 
   xyChart($('#h-weight'), { h: 240, series: [{ name: 'Weight', color: 'var(--c1)', dots: true, r: 2.2, breakGap: 0.5, pts: WEIGHT.map((r) => ({ x: fy(r.date), y: r.v, tip: `${r.date}: ${fmt(r.v, 1)} kg` })) }], xint: true, yfmt: (v) => fmt(v, 0) });
 
-  // Correlation is not causation (two monthly metrics)
+  // Correlation does not imply causation (two monthly metrics)
   const METRICS = { road_pace: { name: 'Road pace (min/km)', f: (m) => m.road_pace, fmt: pace, inv: true }, trail_gap: { name: 'Trail grade-adjusted pace', f: (m) => m.trail_gap, fmt: pace, inv: true },
     km: { name: 'Distance (km)', f: (m) => m.km || null, fmt: (v) => fmt(v) }, avg_hr: { name: 'Average HR (bpm)', f: (m) => m.avg_hr, fmt: (v) => fmt(v) },
     avg_cadence: { name: 'Average cadence (spm)', f: (m) => m.avg_cadence, fmt: (v) => fmt(v) },

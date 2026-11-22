@@ -66,6 +66,8 @@ def build_dashboard(root, out):
     data["meta"] = {"athlete": athlete_name(root), "built": dt.datetime.now().astimezone().isoformat(timespec="minutes"),
                     "last_sync": status.get("last_success") or status.get("last_run"),
                     "has_plan": os.path.exists(os.path.join(root, "config", "plan.json")),
+                    "plan": history.jload(os.path.join(root, "config", "plan.json")),
+                    "zones": history.zone_floors(root),
                     "areas": [a["name"] for a in (history.jload(os.path.join(root, "config", "areas.json"), {}) or {}).get("areas", [])]}
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     page = page.replace("/*__CLAUDROMOS_DATA__*/null", blob, 1)

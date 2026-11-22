@@ -140,7 +140,7 @@ def hav(a, b):
 
 
 def read_records(path):
-    """(lat, lon, t_s, dist_m, alt_m) per record; any of the last three may be None."""
+    """(lat, lon, t_s, dist_m, alt_m, hr) per record; any of the last four may be None."""
     out = []
     if path.endswith(".fit"):
         import fitdecode
@@ -158,11 +158,11 @@ def read_records(path):
                 alt = g("enhanced_altitude")
                 alt = g("altitude") if alt is None else alt
                 out.append((la * SEMI if la is not None else None, lo * SEMI if lo is not None else None,
-                            (ts - t0).total_seconds(), g("distance"), alt))
+                            (ts - t0).total_seconds(), g("distance"), alt, g("heart_rate")))
     elif path.endswith(".gpx"):
         for p in ET.parse(path).getroot().iter():
             if p.tag.endswith("trkpt"):
-                out.append((float(p.get("lat")), float(p.get("lon")), None, None, None))
+                out.append((float(p.get("lat")), float(p.get("lon")), None, None, None, None))
     return out
 
 
@@ -174,7 +174,7 @@ def minetti(i):
 
 def grade_adjusted(recs):
     """(GAP s/km, moving minutes) from records with distance, time and altitude; None if missing."""
-    pts = [(t, d, a) for _, _, t, d, a in recs if t is not None and d is not None]
+    pts = [(t, d, a) for _, _, t, d, a, _ in recs if t is not None and d is not None]
     if len(pts) < 20:
         return None, None
     alts = [a for _, _, a in pts]
@@ -209,14 +209,47 @@ def simplify(pts, step=100):
     return out
 
 
-DIGEST_VERSION = 2
+DIGEST_VERSION = 3   # 3: adds hr_hist
+
+
+def hr_histogram(recs):
+    """Seconds spent at each heart rate (bpm -> s), from record timestamps. Gaps over 10 s (pauses)
+    count as 10 s, so a stopped watch doesn't inflate the last reading."""
+    hist, prev = {}, None
+    for r in recs:
+        t, hr = r[2], r[5]
+        if prev is not None and t is not None and prev[1]:
+            dt_s = min(max(t - prev[0], 0), 10)
+            k = str(int(prev[1]))
+            hist[k] = hist.get(k, 0) + dt_s
+        prev = (t, hr) if t is not None else prev
+    return {k: round(v) for k, v in hist.items() if v >= 1}
+
+
+def zone_floors(root):
+    """Zone 1-5 floors (bpm) from Garmin's current HR zones (Default sport); None if not synced."""
+    snap = jload(os.path.join(root, "health", "snapshots", "heart_rate_zones.json")) or []
+    for z in snap if isinstance(snap, list) else []:
+        if z.get("sport") == "DEFAULT" and z.get("zone1Floor"):
+            return [z[f"zone{i}Floor"] for i in range(1, 6)]
+    return None
+
+
+def zone_seconds(hist, floors):
+    """Seconds in zones 1-5 (below the zone 1 floor counts as zone 1)."""
+    out = [0, 0, 0, 0, 0]
+    for k, v in (hist or {}).items():
+        b = int(k)
+        z = sum(1 for f in floors[1:] if b >= f)
+        out[z] += v
+    return out
 
 
 def digest(path):
     recs = read_records(path)
     pts = [(la, lo) for la, lo, *_ in recs if la is not None and lo is not None]
     gap, moving = grade_adjusted(recs)
-    out = {"v": DIGEST_VERSION, "n": len(pts), "gap_s_per_km": gap, "moving_min": moving}
+    out = {"v": DIGEST_VERSION, "n": len(pts), "gap_s_per_km": gap, "moving_min": moving, "hr_hist": hr_histogram(recs)}
     if pts:
         out.update(start=[round(pts[0][0], 5), round(pts[0][1], 5)],
                    centroid=[round(sum(p[0] for p in pts) / len(pts), 5), round(sum(p[1] for p in pts) / len(pts), 5)],
@@ -301,7 +334,7 @@ def main(root, out, areas_path=None):
             "avg_cadence": round(s["averageRunningCadenceInStepsPerMinute"]) if s.get("averageRunningCadenceInStepsPerMinute") else "",
             "gap_s_per_km": g.get("gap_s_per_km") or "", "moving_min": g.get("moving_min") or "",
             "area": area, "place": s.get("locationName") or "", "course_id": "",
-            "_start": st, "_track": g.get("track") or [],
+            "_start": st, "_track": g.get("track") or [], "_hist": g.get("hr_hist"),
         })
     jsave(cache_p, cache)
     runs.sort(key=lambda x: x["date"])
@@ -320,6 +353,13 @@ def main(root, out, areas_path=None):
                 x["area"] = HOME[0]
             else:
                 x["area"] = "Away"
+
+    # --- time in HR zones per run, from the FIT heart rate and the current zones (so all years compare)
+    floors = zone_floors(root)
+    for x in runs:
+        zs = zone_seconds(x["_hist"], floors) if floors and x["_hist"] else None
+        for i in range(5):
+            x[f"z{i + 1}_s"] = zs[i] if zs else ""
 
     # --- default names ("Bucharest Running", "Bucharest Trail Running") become the area they were run in,
     # so the dashboard reads "Herăstrău" instead of the city. Garmin's name stays in garmin_name.
@@ -382,7 +422,7 @@ def main(root, out, areas_path=None):
             w.writerows(rows)
 
     run_cols = ["id", "date", "year", "month", "name", "garmin_name", "type", "surface", "race", "km", "minutes", "pace_s_per_km",
-                "gap_s_per_km", "moving_min", "gain_m", "gain_per_km", "avg_hr", "avg_cadence", "area", "place", "course_id"]
+                "gap_s_per_km", "moving_min", "gain_m", "gain_per_km", "avg_hr", "avg_cadence", "z1_s", "z2_s", "z3_s", "z4_s", "z5_s", "area", "place", "course_id"]
     write("runs_all.csv", runs, run_cols)
     write("courses.csv", courses, ["course_id", "course", "km", "gain_m", "attempts", "races", "first", "last"])
     write("course_runs.csv", sorted(course_runs, key=lambda r: (r["course_id"], r["date"])),
