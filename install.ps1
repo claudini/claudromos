@@ -131,6 +131,7 @@ function Place-Generated([string]$From, [string]$To) {
         New-Item -ItemType Directory -Force -Path (Split-Path $To) | Out-Null; Copy-Item $From $To -Force }
 }
 # The same coach for other assistants: GitHub Copilot (AGENTS.md, .github\copilot-instructions.md), Gemini CLI.
+Place-Generated "$Src\engine\DATA_README.md" "$Data\README.md"
 Place-Generated "$Src\coach\AGENTS.md" "$Data\AGENTS.md"
 Place-Generated "$Src\coach\AGENTS.md" "$Data\.github\copilot-instructions.md"
 if (-not (Test-Path "$Data\.gemini\settings.json")) {

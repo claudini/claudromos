@@ -137,3 +137,9 @@ Garmin's API only reads: workouts can't be pushed to the watch.
 ## Moving from the earlier "Garmin sync" setup
 
 Run `bash install.sh` from the repo. It offers to move `~/Garmin` to `~/Claudromos`, carries over the key, settings and sync state, and replaces the old schedule. Then connect `~/Claudromos` in the Claude desktop app in place of `~/Garmin`.
+
+## More docs
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the parts fit together, repo and data-folder layout, design choices
+- [docs/ONBOARDING.md](docs/ONBOARDING.md): what a new runner goes through, and where it's still rough
+- Each data folder also gets a short `README.md` describing its files and commands

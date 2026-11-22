@@ -197,6 +197,8 @@ place_generated() {  # copy unless the runner has made the file their own (remov
   if [ ! -f "$2" ] || head -1 "$2" | grep -q "claudromos:generated"; then mkdir -p "$(dirname "$2")"; cp "$1" "$2"; fi
 }
 # The same coach for other assistants: GitHub Copilot (AGENTS.md, .github/copilot-instructions.md), Gemini CLI.
+head -1 "$DATA/README.md" 2>/dev/null | grep -q "^# Garmin data (synced automatically)" && rm -f "$DATA/README.md"   # pre-Claudromos README
+place_generated "$SRC/engine/DATA_README.md" "$DATA/README.md"
 place_generated "$SRC/coach/AGENTS.md" "$DATA/AGENTS.md"
 place_generated "$SRC/coach/AGENTS.md" "$DATA/.github/copilot-instructions.md"
 [ -f "$DATA/.gemini/settings.json" ] || { mkdir -p "$DATA/.gemini"; printf '{\n  "context": { "fileName": ["AGENTS.md", "GEMINI.md"] }\n}\n' > "$DATA/.gemini/settings.json"; }
